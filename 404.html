@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Meal Manager</title>
+<script>
+/* Static hosts (GitHub Pages) serve this file for /app/meals etc. Send the visitor back to the app root and remember the tab. */
+(function () {
+  var tabs = ['meals', 'bazar', 'costs', 'members', 'account'];
+  var parts = location.pathname.replace(/\/+$/, '').split('/'), last = parts.pop();
+  if (tabs.indexOf(last) > -1) {
+    try { sessionStorage.setItem('mm_tab', last); } catch (e) {}
+    location.replace(parts.join('/') + '/');
+  }
+})();
+</script>
+<style>body{font-family:system-ui,sans-serif;text-align:center;padding:60px 16px;color:#1b2430}a{color:#1f4e79;font-weight:600}</style></head>
+<body><h1>404</h1><p>পেজটি পাওয়া যায়নি।</p><p><a href="./">Meal Manager-এ ফিরে যান</a></p></body></html>
