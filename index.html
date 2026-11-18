@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#1f4e79">
 <title>Meal Manager</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/noto-sans-bengali-bengali-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/noto-sans-bengali-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <style>
+@font-face{font-family:"Noto Sans Bengali";font-style:normal;font-display:swap;font-weight:100 900;src:url(fonts/noto-sans-bengali-bengali-wght-normal.woff2) format("woff2-variations"),url(fonts/noto-sans-bengali-bengali-wght-normal.woff2) format("woff2");unicode-range:U+0951-0952,U+0964-0965,U+0980-09FE,U+1CD0,U+1CD2,U+1CD5-1CD6,U+1CD8,U+1CE1,U+1CEA,U+1CED,U+1CF2,U+1CF5-1CF7,U+200C-200D,U+20B9,U+25CC,U+A8F1}
+@font-face{font-family:"Noto Sans Bengali";font-style:normal;font-display:swap;font-weight:100 900;src:url(fonts/noto-sans-bengali-latin-wght-normal.woff2) format("woff2-variations"),url(fonts/noto-sans-bengali-latin-wght-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Noto Sans Bengali";font-style:normal;font-display:swap;font-weight:100 900;src:url(fonts/noto-sans-bengali-latin-ext-wght-normal.woff2) format("woff2-variations"),url(fonts/noto-sans-bengali-latin-ext-wght-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 :root{--primary:#1f4e79;--gold:#c9a227;color-scheme:light;--bg:#f3f5f8;--panel:#fff;--text:#1b2430;--muted:#5d6b7a;--border:#d7dde5;--input-bg:#fff;--danger:#c62828;--success:#1b7f3b;--warn:#b26a00}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0e1621;--panel:#16212e;--text:#e6edf5;--muted:#9aa9ba;--border:#2a384a;--input-bg:#0f1824;--danger:#ef7b7b;--success:#5fcf86;--warn:#e0a24a;--primary:#4f8fc9}}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#0e1621;--panel:#16212e;--text:#e6edf5;--muted:#9aa9ba;--border:#2a384a;--input-bg:#0f1824;--danger:#ef7b7b;--success:#5fcf86;--warn:#e0a24a;--primary:#4f8fc9}
@@ -161,8 +167,8 @@ function waitScreen() {
 const mref = () => doc(db, 'members', user.uid);
 async function load() {
   const q = c => getDocs(query(collection(db, c), where('month', '==', month))).then(s => s.docs.map(d => Object.assign({ id: d.id }, d.data())));
-  const ms = await getDocs(collection(db, 'members')); S.members = ms.docs.map(d => Object.assign({ id: d.id }, d.data()));
-  [S.meals, S.bazar, S.costs] = await Promise.all(['meals', 'bazar', 'costs'].map(q));
+  const mp = getDocs(collection(db, 'members')).then(ms => ms.docs.map(d => Object.assign({ id: d.id }, d.data())));
+  [S.members, S.meals, S.bazar, S.costs] = await Promise.all([mp].concat(['meals', 'bazar', 'costs'].map(q)));
 }
 const actives = () => S.members.filter(m => m.status === 'active').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 const nameOf = id => { const m = S.members.find(x => x.id === id); return m ? m.name : '?'; };
@@ -372,9 +378,10 @@ onAuthStateChanged(auth, async u => {
   user = u; me = null; isAdmin = false;
   if (!u) { document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen('in'); }
   app.innerHTML = '<div class="card center" style="text-align:center"><span class="spin"></span></div>';
-  try { await getDoc(doc(db, 'admins', u.uid)); isAdmin = true; } catch (e) { isAdmin = false; }   // rules allow this read only for the manager UID
+  const pMe = getDoc(mref()); pMe.catch(() => {});
+  isAdmin = await getDoc(doc(db, 'admins', u.uid)).then(() => true, () => false);   // rules allow this read only for the manager UID
   try {
-    let s = await getDoc(mref());
+    let s = await pMe;
     if (!s.exists()) { await setDoc(mref(), { name: pendingName || u.displayName || (u.email || '').split('@')[0], email: u.email || '', role: isAdmin ? 'admin' : 'member', status: isAdmin ? 'active' : 'pending', createdAt: serverTimestamp() }); s = await getDoc(mref()); }
     me = s.data();
   } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p><div class="uid">' + esc(u.uid) + '</div><button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>'; return; }
