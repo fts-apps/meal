@@ -407,18 +407,39 @@ function tabList(k) {
   };
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm(p('Delete this entry?', 'এই এন্ট্রি মুছবেন?'))) return; try { await deleteDoc(doc(db, k, b.dataset.del)); await load(); renderTab(); bindMonth(); } catch (e) { alert(emsg(e)); } });
 }
+let editId = null;
+const saveName = async (id, val) => {
+  const nm = String(val || '').replace(/\s+/g, ' ').trim();
+  if (!nm) throw new Error(p('Name cannot be empty.', 'নাম ফাঁকা রাখা যাবে না।'));
+  if (nm.length > 40) throw new Error(p('Name is too long (max 40 characters).', 'নাম অনেক বড় (সর্বোচ্চ ৪০ অক্ষর)।'));
+  await setDoc(doc(db, 'members', id), { name: nm }, { merge: true });
+  if (user && id === user.uid && me) me.name = nm;
+  await load(); saveCache(); if (me) renderSide();
+  return nm;
+};
 function tabMembers() {
   const rows = S.members.slice().sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1) || (a.name || '').localeCompare(b.name || ''));
   const chip = s => '<span class="chip ' + (s === 'active' ? 'on' : 'wait') + '">' + (s === 'active' ? p('Active', 'সক্রিয়') : s === 'pending' ? p('Pending', 'অপেক্ষমান') : p('Inactive', 'নিষ্ক্রিয়')) + '</span>';
+  const act = m => editId === m.id
+    ? '<button class="btn btn-sm btn-primary" data-sv="' + m.id + '">' + p('Save', 'সেভ') + '</button> <button class="btn btn-sm" data-cn="1">' + p('Cancel', 'বাতিল') + '</button>'
+    : '<button class="btn btn-sm" data-ed="' + m.id + '">' + p('Edit name', 'নাম পরিবর্তন') + '</button> ' + (m.status !== 'active' ? '<button class="btn btn-sm btn-primary" data-st="active" data-id="' + m.id + '">' + p('Approve', 'অনুমোদন') + '</button> ' : (m.role !== 'admin' ? '<button class="btn btn-sm" data-st="inactive" data-id="' + m.id + '">' + p('Deactivate', 'নিষ্ক্রিয়') + '</button> ' : '')) + (m.role !== 'admin' ? '<button class="btn btn-sm btn-danger" data-rm="' + m.id + '">' + p('Remove', 'মুছুন') + '</button>' : '');
   app.innerHTML = head(tt('members'), 1) + '<div class="card"><div class="tw"><table class="tbl"><thead><tr><th>' + p('Name', 'নাম') + '</th><th>' + p('Email', 'ইমেইল') + '</th><th>' + p('Status', 'অবস্থা') + '</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody>'
-    + rows.map(m => '<tr><td>' + esc(m.name) + (m.role === 'admin' ? ' <span class="chip">' + p('Manager', 'ম্যানেজার') + '</span>' : '') + '</td><td>' + esc(m.email) + '</td><td>' + chip(m.status) + '</td>'
-      + (isAdmin ? '<td class="n">' + (m.status !== 'active' ? '<button class="btn btn-sm btn-primary" data-st="active" data-id="' + m.id + '">' + p('Approve', 'অনুমোদন') + '</button> ' : (m.role !== 'admin' ? '<button class="btn btn-sm" data-st="inactive" data-id="' + m.id + '">' + p('Deactivate', 'নিষ্ক্রিয়') + '</button> ' : '')) + (m.role !== 'admin' ? '<button class="btn btn-sm btn-danger" data-rm="' + m.id + '">' + p('Remove', 'মুছুন') + '</button>' : '') + '</td>' : '') + '</tr>').join('')
+    + rows.map(m => '<tr><td>' + (editId === m.id ? '<input id="ne" maxlength="40" value="' + esc(m.name || '') + '" style="width:100%;min-width:150px" placeholder="' + p('Display name', 'প্রদর্শিত নাম') + '">' : esc(m.name) + (m.role === 'admin' ? ' <span class="chip">' + p('Manager', 'ম্যানেজার') + '</span>' : '')) + '</td><td>' + esc(m.email) + '</td><td>' + chip(m.status) + '</td>'
+      + (isAdmin ? '<td class="n">' + act(m) + '</td>' : '') + '</tr>').join('')
     + '</tbody></table></div>' + (isAdmin ? '<p class="muted" style="margin-bottom:0">' + p('New people register themselves, then you approve them here. Only active members are counted in meal rate and costs.', 'নতুনরা নিজে নিবন্ধন করবে, আপনি এখান থেকে অনুমোদন দেবেন। শুধু সক্রিয় সদস্যরাই হিসাবে ধরা হয়।') + '</p>' : '') + '</div>';
   app.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { try { await setDoc(doc(db, 'members', b.dataset.id), { status: b.dataset.st }, { merge: true }); await load(); tabMembers(); } catch (e) { alert(emsg(e)); } });
   app.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { if (!confirm(p('Remove this member?', 'এই সদস্যকে মুছবেন?'))) return; try { await deleteDoc(doc(db, 'members', b.dataset.rm)); await load(); tabMembers(); } catch (e) { alert(emsg(e)); } });
+  app.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { editId = b.dataset.ed; tabMembers(); const n = $('#ne'); if (n) { n.focus(); n.select(); } });
+  app.querySelectorAll('[data-cn]').forEach(b => b.onclick = () => { editId = null; tabMembers(); });
+  const doSave = async id => { const n = $('#ne'); try { await saveName(id, n ? n.value : ''); editId = null; tabMembers(); } catch (e) { alert(emsg(e)); } };
+  app.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => doSave(b.dataset.sv));
+  const ne = $('#ne'); if (ne) ne.onkeydown = e => { if (e.key === 'Enter') doSave(editId); else if (e.key === 'Escape') { editId = null; tabMembers(); } };
 }
 function tabAccount() {
-  app.innerHTML = head(tt('account'), 1) + '<div class="card"><h3 style="margin-top:0">' + esc(me.name) + '</h3><p class="muted" style="margin:0">' + esc(user.email) + ' &bull; ' + (isAdmin ? p('Manager', 'ম্যানেজার') : p('Member', 'সদস্য')) + '</p><h3>UID</h3><div class="uid" id="uid">' + esc(user.uid) + '</div><button class="btn btn-sm" id="cp">' + p('Copy UID', 'UID কপি') + '</button> <button class="btn btn-sm btn-danger" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>';
+  app.innerHTML = head(tt('account'), 1) + '<div class="card"><h3 style="margin-top:0">' + p('Display name', 'প্রদর্শিত নাম') + '</h3><div class="frm" style="margin-bottom:4px"><input id="an" maxlength="40" value="' + esc(me.name || '') + '"><button class="btn btn-primary" id="asv">' + p('Save', 'সেভ') + '</button></div><div class="msg" id="am"></div><p class="muted" style="margin:0">' + p('Only the name shown in the app and reports changes. Your login email stays the same.', 'শুধু অ্যাপ ও রিপোর্টে দেখানো নাম বদলাবে। লগইন ইমেইল একই থাকবে।') + '</p></div>'
+    + '<div class="card"><h3 style="margin-top:0">' + esc(me.name) + '</h3><p class="muted" style="margin:0">' + esc(user.email) + ' &bull; ' + (isAdmin ? p('Manager', 'ম্যানেজার') : p('Member', 'সদস্য')) + '</p><h3>UID</h3><div class="uid" id="uid">' + esc(user.uid) + '</div><button class="btn btn-sm" id="cp">' + p('Copy UID', 'UID কপি') + '</button> <button class="btn btn-sm btn-danger" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>';
+  const saveOwn = async () => { const b = $('#asv'); b.disabled = true; try { await saveName(user.uid, $('#an').value); tabAccount(); setMsg('am', p('Name updated.', 'নাম আপডেট হয়েছে।'), 1); } catch (e) { setMsg('am', e && e.message && !e.code ? e.message : emsg(e)); b.disabled = false; } };
+  $('#asv').onclick = saveOwn; $('#an').onkeydown = e => { if (e.key === 'Enter') saveOwn(); };
   $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(user.uid); $('#cp').textContent = p('Copied', 'কপি হয়েছে'); } catch (e) {} };
 }
 
