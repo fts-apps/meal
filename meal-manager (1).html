@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f4e79">
+<title>Meal Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#1f4e79;--gold:#c9a227;color-scheme:light;--bg:#f3f5f8;--panel:#fff;--text:#1b2430;--muted:#5d6b7a;--border:#d7dde5;--input-bg:#fff;--danger:#c62828;--success:#1b7f3b;--warn:#b26a00}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0e1621;--panel:#16212e;--text:#e6edf5;--muted:#9aa9ba;--border:#2a384a;--input-bg:#0f1824;--danger:#ef7b7b;--success:#5fcf86;--warn:#e0a24a;--primary:#4f8fc9}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0e1621;--panel:#16212e;--text:#e6edf5;--muted:#9aa9ba;--border:#2a384a;--input-bg:#0f1824;--danger:#ef7b7b;--success:#5fcf86;--warn:#e0a24a;--primary:#4f8fc9}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:15px/1.55 "Noto Sans Bengali",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+input,select{background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:9px 10px}
+.wrap{padding:18px 18px 28px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+.card h2{margin:0 0 4px;font-size:18px}.card h3{margin:14px 0 8px;font-size:15px}
+.center{max-width:430px;margin:40px auto 0}
+.muted{color:var(--muted);font-size:13.5px}
+.fg{margin:0 0 12px}.fg label{display:block;font-size:13px;font-weight:600;margin:0 0 4px}.fg input,.fg select{width:100%}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--primary)}.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-danger{color:var(--danger);border-color:var(--danger)}.btn-sm{padding:5px 10px;font-size:13px}
+.lnk{background:none;border:0;padding:0;color:var(--primary);text-decoration:underline;cursor:pointer;font-weight:600}
+.msg{min-height:20px;margin:8px 0;font-size:13.5px;color:var(--danger)}.msg.ok{color:var(--success)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bar h2{margin:0;font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 16px}
+.stat{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel)}
+.stat small{display:block;color:var(--muted);font-size:12.5px}.stat b{display:block;font-size:20px;margin-top:2px}
+.frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end;margin-bottom:12px}
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+.tbl th{background:var(--bg);font-size:12.5px;color:var(--muted);white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}.tbl .n{text-align:right;white-space:nowrap}
+.tbl input[type=number]{width:70px;padding:5px 6px}
+.pos{color:var(--success);font-weight:700}.neg{color:var(--danger);font-weight:700}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;border:1px solid var(--border);color:var(--muted)}
+.chip.on{border-color:var(--success);color:var(--success)}.chip.wait{border-color:var(--warn);color:var(--warn)}
+.uid{word-break:break-all;font:12px ui-monospace,Consolas,monospace;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;margin:8px 0}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.burger{width:42px;height:42px;flex:none;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;padding:0}
+.burger span{display:block;width:20px;height:2px;border-radius:2px;background:var(--text)}
+.side{position:fixed;top:0;bottom:0;left:0;width:64px;background:var(--panel);border-right:1px solid var(--border);z-index:50;display:none;flex-direction:column;overflow-y:auto;overflow-x:hidden;transition:width .2s}
+body.in .side{display:flex}body.in{padding-left:64px}
+body.open .side{width:250px}body.open.in{padding-left:250px}
+@media(max-width:720px){body.open.in{padding-left:64px}body.open .side{box-shadow:4px 0 24px rgba(0,0,0,.2)}}
+.sb-h{display:flex;align-items:center;gap:10px;padding:14px 10px 10px;border-bottom:3px solid var(--gold)}
+.sb-t{font-weight:700;font-size:15px}
+.sb-u{margin:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side nav{display:flex;flex-direction:column;gap:2px;padding:4px 10px;flex:1}
+.nav{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:8px;background:none;font-weight:500;font-size:14.5px;text-align:left;text-decoration:none;cursor:pointer;color:var(--text)}
+.nav svg{flex:none;color:var(--muted)}.nav:hover{background:var(--bg)}
+.nav.on{background:color-mix(in srgb,var(--primary) 13%,transparent);color:var(--primary);font-weight:600;box-shadow:inset 3px 0 0 var(--primary)}
+.nav.on svg{color:var(--primary)}.nav.danger,.nav.danger svg{color:var(--danger)}
+.sb-f{padding:8px 10px 14px;border-top:1px solid var(--border)}
+body:not(.open) .nav span,body:not(.open) .sb-t,body:not(.open) .sb-u{display:none}
+body:not(.open) .nav{justify-content:center;padding:10px 0}
+@media print{.side,.bar .no,.frm,.btn{display:none!important}body.in{padding-left:0}}
+</style>
+</head>
+<body>
+<aside class="side" id="side"></aside>
+<main class="wrap" id="app"><div class="card center" style="text-align:center"><span class="spin"></span></div></main>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query, where, getDocs, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+/* ============ SETTINGS: paste YOUR Firebase web-app config here ============ */
+const firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_PROJECT_ID.firebasestorage.app",
+  messagingSenderId: "PASTE",
+  appId: "PASTE"
+};
+const fb = initializeApp(firebaseConfig), auth = getAuth(fb), db = getFirestore(fb);
+
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => ('0' + n).slice(-2);
+const money = n => (Math.round(n * 100) / 100).toLocaleString('en-US');
+const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
+let lang = 'bn'; try { lang = localStorage.getItem('mm_lang') || 'bn'; const th = localStorage.getItem('mm_theme'); if (th) document.documentElement.setAttribute('data-theme', th); if (localStorage.getItem('mm_open') === '1') document.body.classList.add('open'); } catch (e) {}
+const p = (e, b) => lang === 'bn' ? b : e;
+const app = $('#app');
+const nowM = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1); };
+const nowD = () => nowM() + '-' + pad(new Date().getDate());
+
+let user = null, isAdmin = false, me = null, tab = 'dash', month = nowM(), mdate = nowD(), pendingName = '';
+let S = { members: [], meals: [], bazar: [], deposits: [], costs: [] };
+
+const ICON = {
+  dash: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  meals: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/>',
+  bazar: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
+  deposits: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+  costs: '<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>',
+  members: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  account: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  theme: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  lang: '<path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>',
+  out: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
+};
+const ico = k => '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICON[k] + '</svg>';
+const TABS = { dash: ['Dashboard', 'ড্যাশবোর্ড'], meals: ['Meals', 'মিল'], bazar: ['Bazar', 'বাজার'], deposits: ['Deposits', 'জমা'], costs: ['Other costs', 'অন্যান্য খরচ'], members: ['Members', 'সদস্য'], account: ['Account', 'অ্যাকাউন্ট'] };
+const tt = k => p(TABS[k][0], TABS[k][1]);
+const setMsg = (id, m, ok) => { const e = $('#' + id); if (e) { e.textContent = m || ''; e.className = 'msg' + (ok ? ' ok' : ''); } };
+const fg = (id, l, type, extra) => '<div class="fg"><label for="' + id + '">' + esc(l) + '</label><input id="' + id + '" type="' + type + '" ' + (extra || '') + '></div>';
+
+function emsg(e) {
+  const c = (e && e.code) || '';
+  const m = { 'auth/invalid-credential': ['Wrong email or password.', 'ইমেইল বা পাসওয়ার্ড ভুল।'], 'auth/wrong-password': ['Wrong email or password.', 'ইমেইল বা পাসওয়ার্ড ভুল।'], 'auth/user-not-found': ['No account with this email.', 'এই ইমেইলে অ্যাকাউন্ট নেই।'], 'auth/email-already-in-use': ['This email is already registered.', 'এই ইমেইল আগেই নিবন্ধিত।'], 'auth/weak-password': ['Password needs at least 6 characters.', 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'], 'auth/invalid-email': ['Invalid email address.', 'ইমেইল সঠিক নয়।'], 'auth/too-many-requests': ['Too many attempts. Wait a few minutes.', 'অনেকবার চেষ্টা হয়েছে, কিছুক্ষণ অপেক্ষা করুন।'], 'auth/popup-closed-by-user': ['Google window was closed.', 'গুগল উইন্ডো বন্ধ করা হয়েছে।'], 'auth/unauthorized-domain': ['This domain is not authorized in Firebase (Authentication > Settings > Authorized domains).', 'এই ডোমেইন Firebase-এ অনুমোদিত নয় (Authentication > Settings > Authorized domains)।'], 'auth/operation-not-allowed': ['This sign-in method is not enabled in Firebase.', 'এই লগইন পদ্ধতি Firebase-এ চালু করা হয়নি।'], 'permission-denied': ['Permission denied. Check Firestore rules.', 'অনুমতি নেই। Firestore rules দেখুন।'] }[c];
+  return m ? p(m[0], m[1]) : p('Error: ', 'সমস্যা: ') + (c || (e && e.message) || '');
+}
+
+/* ============ login / register ============ */
+function authScreen(mode) {
+  const up = mode === 'up';
+  app.innerHTML = '<div class="card center"><h2>' + p('Meal Manager', 'মিল ম্যানেজার') + '</h2><p class="muted">' + (up ? p('Create a new account', 'নতুন অ্যাকাউন্ট খুলুন') : p('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন')) + '</p>'
+    + (up ? fg('uN', p('Your name', 'আপনার নাম'), 'text') : '') + fg('uE', p('Email', 'ইমেইল'), 'email', 'autocomplete="username" autocapitalize="off"') + fg('uP', p('Password (min 6)', 'পাসওয়ার্ড (কমপক্ষে ৬)'), 'password', 'autocomplete="' + (up ? 'new' : 'current') + '-password"')
+    + '<div class="msg" id="m"></div><button class="btn btn-primary" id="go">' + (up ? p('Register', 'নিবন্ধন করুন') : p('Sign in', 'সাইন ইন')) + '</button> <button class="btn" id="gg">' + p('Continue with Google', 'গুগল দিয়ে লগইন') + '</button>'
+    + '<p style="margin-bottom:0"><button class="lnk" id="sw">' + (up ? p('Already have an account? Sign in', 'অ্যাকাউন্ট আছে? সাইন ইন') : p('New here? Register', 'নতুন? নিবন্ধন করুন')) + '</button>' + (up ? '' : ' &nbsp;·&nbsp; <button class="lnk" id="fp">' + p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?') + '</button>') + '</p></div>';
+  const go = async () => {
+    const em = $('#uE').value.trim(), pw = $('#uP').value, nm = up ? $('#uN').value.trim() : '';
+    if (!em || !pw || (up && !nm)) return setMsg('m', p('Fill in all fields.', 'সব ঘর পূরণ করুন।'));
+    $('#go').disabled = true; setMsg('m', '');
+    try {
+      if (up) { pendingName = nm; const c = await createUserWithEmailAndPassword(auth, em, pw); try { await updateProfile(c.user, { displayName: nm }); } catch (x) {} }
+      else await signInWithEmailAndPassword(auth, em, pw);
+    } catch (e) { $('#go').disabled = false; setMsg('m', emsg(e)); }
+  };
+  $('#go').onclick = go; $('#uP').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#gg').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { setMsg('m', emsg(e)); } };
+  $('#sw').onclick = () => authScreen(up ? 'in' : 'up');
+  if ($('#fp')) $('#fp').onclick = async () => { const em = $('#uE').value.trim(); if (!em) return setMsg('m', p('Type your email first.', 'আগে ইমেইল লিখুন।')); try { await sendPasswordResetEmail(auth, em); setMsg('m', p('Reset link sent to your email.', 'রিসেট লিংক ইমেইলে পাঠানো হয়েছে।'), 1); } catch (e) { setMsg('m', emsg(e)); } };
+}
+function waitScreen() {
+  document.body.classList.remove('in'); $('#side').innerHTML = '';
+  app.innerHTML = '<div class="card center"><h2>' + p('Waiting for approval', 'অনুমোদনের অপেক্ষায়') + '</h2><p class="muted">' + p('Your account is not active yet. Ask the manager to approve you in Members, then refresh. Send your UID to the manager if asked:', 'আপনার অ্যাকাউন্ট এখনো সক্রিয় নয়। ম্যানেজারকে "সদস্য" ট্যাবে আপনাকে অনুমোদন করতে বলুন, তারপর রিফ্রেশ করুন। চাইলে নিচের UID ম্যানেজারকে পাঠান:') + '</p><div class="uid">' + esc(user.uid) + '</div><button class="btn btn-primary" onclick="location.reload()">' + p('Refresh', 'রিফ্রেশ') + '</button> <button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>';
+}
+
+/* ============ data ============ */
+const mref = () => doc(db, 'members', user.uid);
+async function load() {
+  const q = c => getDocs(query(collection(db, c), where('month', '==', month))).then(s => s.docs.map(d => Object.assign({ id: d.id }, d.data())));
+  const ms = await getDocs(collection(db, 'members')); S.members = ms.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  [S.meals, S.bazar, S.deposits, S.costs] = await Promise.all(['meals', 'bazar', 'deposits', 'costs'].map(q));
+}
+const actives = () => S.members.filter(m => m.status === 'active').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+const nameOf = id => { const m = S.members.find(x => x.id === id); return m ? m.name : '?'; };
+function calc() {
+  const ms = actives(), meals = {}, dep = {}; ms.forEach(m => { meals[m.id] = 0; dep[m.id] = 0; });
+  S.meals.forEach(x => { if (x.uid in meals) meals[x.uid] += (+x.b || 0) + (+x.l || 0) + (+x.d || 0); });
+  S.deposits.forEach(x => { if (x.uid in dep) dep[x.uid] += +x.amount || 0; });
+  const totM = sum(Object.values(meals), v => v), bz = sum(S.bazar, x => x.amount), oc = sum(S.costs, x => x.amount);
+  const rate = totM ? bz / totM : 0, share = ms.length ? oc / ms.length : 0;
+  const rows = ms.map(m => { const cost = meals[m.id] * rate; return { m, meals: meals[m.id], cost, dep: dep[m.id], share, bal: dep[m.id] - cost - share }; });
+  return { rows, totM, bz, oc, rate, share, dep: sum(rows, r => r.dep) };
+}
+
+/* ============ shell ============ */
+async function refresh() {
+  app.innerHTML = '<div class="card center" style="text-align:center"><span class="spin"></span></div>';
+  try { await load(); } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p></div>'; return; }
+  document.body.classList.add('in'); renderSide(); renderTab();
+}
+function renderSide() {
+  const keys = Object.keys(TABS);
+  $('#side').innerHTML = '<div class="sb-h"><button class="burger" data-a="menu" aria-label="Menu"><span></span><span></span><span></span></button><div class="sb-t">' + p('Meal Manager', 'মিল ম্যানেজার') + '</div></div>'
+    + '<div class="sb-u" title="' + esc(user.email) + '">' + esc(me.name || user.email) + (isAdmin ? ' (' + p('Manager', 'ম্যানেজার') + ')' : '') + '</div><nav>'
+    + keys.map(k => '<a class="nav' + (tab === k ? ' on' : '') + '" href="#' + k + '" data-t="' + k + '">' + ico(k) + '<span>' + esc(tt(k)) + '</span></a>').join('') + '</nav><div class="sb-f">'
+    + '<button class="nav" data-a="theme">' + ico('theme') + '<span>' + p('Dark / Light', 'ডার্ক / লাইট') + '</span></button>'
+    + '<button class="nav" data-a="lang">' + ico('lang') + '<span>' + (lang === 'bn' ? 'English' : 'বাংলা') + '</span></button>'
+    + '<button class="nav danger" data-a="logout">' + ico('out') + '<span>' + p('Sign out', 'সাইন আউট') + '</span></button></div>';
+  $('#side').querySelectorAll('[data-t]').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; history.replaceState(null, '', '#' + tab); renderSide(); renderTab(); if (innerWidth < 721) { document.body.classList.remove('open'); } });
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
+  if (a === 'menu') { const o = !document.body.classList.contains('open'); document.body.classList.toggle('open', o); try { localStorage.setItem('mm_open', o ? '1' : '0'); } catch (x) {} }
+  else if (a === 'lang') { lang = lang === 'bn' ? 'en' : 'bn'; try { localStorage.setItem('mm_lang', lang); } catch (x) {} if (me) { renderSide(); renderTab(); } else if (user) waitScreen(); else authScreen('in'); }
+  else if (a === 'theme') { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', nx); try { localStorage.setItem('mm_theme', nx); } catch (x) {} }
+  else if (a === 'logout') { try { await signOut(auth); } catch (x) {} }
+});
+function head(title, noMonth) {
+  return '<div class="bar"><h2>' + esc(title) + '</h2>' + (noMonth ? '' : '<div class="no"><input type="month" id="mo" value="' + month + '"> <button class="btn btn-sm" onclick="window.print()">' + p('Print', 'প্রিন্ট') + '</button></div>') + '</div>';
+}
+function bindMonth() { const m = $('#mo'); if (m) m.onchange = async () => { if (!m.value) return; month = m.value; mdate = month === nowM() ? nowD() : month + '-01'; await refresh(); }; }
+function renderTab() {
+  ({ dash: tabDash, meals: tabMeals, bazar: () => tabList('bazar'), deposits: () => tabList('deposits'), costs: () => tabList('costs'), members: tabMembers, account: tabAccount })[tab]();
+  bindMonth(); document.title = tt(tab) + ' - Meal Manager';
+}
+
+/* ============ tabs ============ */
+function tabDash() {
+  const c = calc(), st = (l, v) => '<div class="stat"><small>' + esc(l) + '</small><b>' + esc(v) + '</b></div>';
+  app.innerHTML = head(tt('dash')) + '<div class="grid">' + st(p('Total bazar', 'মোট বাজার'), money(c.bz)) + st(p('Total meals', 'মোট মিল'), money(c.totM)) + st(p('Meal rate', 'মিল রেট'), money(c.rate)) + st(p('Total deposits', 'মোট জমা'), money(c.dep)) + st(p('Other costs', 'অন্যান্য খরচ'), money(c.oc)) + '</div>'
+    + '<div class="card"><h3 style="margin-top:0">' + p('Member summary', 'সদস্যভিত্তিক হিসাব') + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th class="n">' + p('Meals', 'মিল') + '</th><th class="n">' + p('Meal cost', 'মিল খরচ') + '</th><th class="n">' + p('Other share', 'অন্য খরচের ভাগ') + '</th><th class="n">' + p('Deposit', 'জমা') + '</th><th class="n">' + p('Balance', 'ব্যালেন্স') + '</th></tr></thead><tbody>'
+    + (c.rows.length ? c.rows.map(r => '<tr><td>' + esc(r.m.name) + '</td><td class="n">' + money(r.meals) + '</td><td class="n">' + money(r.cost) + '</td><td class="n">' + money(r.share) + '</td><td class="n">' + money(r.dep) + '</td><td class="n ' + (r.bal >= 0 ? 'pos' : 'neg') + '">' + money(r.bal) + '</td></tr>').join('') : '<tr><td colspan="6" class="muted">' + p('No active members yet.', 'এখনো কোনো সক্রিয় সদস্য নেই।') + '</td></tr>')
+    + '</tbody></table></div><p class="muted" style="margin-bottom:0">' + p('Meal rate = total bazar ÷ total meals. Balance = deposit − meal cost − other share. Positive = gets back, negative = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। ব্যালেন্স = জমা − মিল খরচ − অন্য খরচের ভাগ। ধনাত্মক = ফেরত পাবে, ঋণাত্মক = দিতে হবে।') + '</p></div>';
+}
+const dateAttr = () => 'min="' + month + '-01" max="' + month + '-31"';
+function tabMeals() {
+  const ms = actives(); let h = head(tt('meals'));
+  if (isAdmin) {
+    const cur = {}; S.meals.filter(x => x.date === mdate).forEach(x => cur[x.uid] = x);
+    const ni = (id, v) => '<input type="number" min="0" step="0.5" data-k="' + id + '" value="' + (v || 0) + '">';
+    h += '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="md" value="' + mdate + '" ' + dateAttr() + '></div></div><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th>' + p('Breakfast', 'সকাল') + '</th><th>' + p('Lunch', 'দুপুর') + '</th><th>' + p('Dinner', 'রাত') + '</th></tr></thead><tbody>'
+      + ms.map(m => { const c = cur[m.id] || {}; return '<tr data-u="' + m.id + '"><td>' + esc(m.name) + '</td><td>' + ni('b', c.b) + '</td><td>' + ni('l', c.l) + '</td><td>' + ni('d', c.d) + '</td></tr>'; }).join('')
+      + '</tbody></table></div><div class="msg" id="m"></div><button class="btn btn-primary" id="sv">' + p('Save meals for this day', 'এই দিনের মিল সেভ করুন') + '</button></div>';
+  }
+  const mine = isAdmin ? S.meals.slice() : S.meals.filter(x => x.uid === user.uid);
+  mine.sort((a, b) => b.date.localeCompare(a.date));
+  h += '<div class="card"><h3 style="margin-top:0">' + (isAdmin ? p('All entries this month', 'এই মাসের সব এন্ট্রি') : p('My meals this month', 'এই মাসে আমার মিল')) + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (isAdmin ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th class="n">' + p('B', 'সকাল') + '</th><th class="n">' + p('L', 'দুপুর') + '</th><th class="n">' + p('D', 'রাত') + '</th><th class="n">' + p('Total', 'মোট') + '</th></tr></thead><tbody>'
+    + (mine.length ? mine.map(x => '<tr><td>' + esc(x.date) + '</td>' + (isAdmin ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td class="n">' + (+x.b || 0) + '</td><td class="n">' + (+x.l || 0) + '</td><td class="n">' + (+x.d || 0) + '</td><td class="n"><b>' + ((+x.b || 0) + (+x.l || 0) + (+x.d || 0)) + '</b></td></tr>').join('') : '<tr><td colspan="6" class="muted">' + p('No meals recorded.', 'কোনো মিল নেই।') + '</td></tr>') + '</tbody></table></div></div>';
+  app.innerHTML = h;
+  if (!isAdmin) return;
+  $('#md').onchange = e => { if (e.target.value) { mdate = e.target.value; tabMeals(); bindMonth(); } };
+  $('#sv').onclick = async () => {
+    $('#sv').disabled = true;
+    try {
+      const wb = writeBatch(db);
+      app.querySelectorAll('tr[data-u]').forEach(tr => {
+        const u = tr.dataset.u, v = {}; tr.querySelectorAll('input').forEach(i => v[i.dataset.k] = Math.max(0, +i.value || 0));
+        const ref = doc(db, 'meals', mdate + '_' + u);
+        if (v.b + v.l + v.d === 0) wb.delete(ref); else wb.set(ref, { date: mdate, month: mdate.slice(0, 7), uid: u, b: v.b, l: v.l, d: v.d });
+      });
+      await wb.commit(); await load(); tabMeals(); bindMonth(); setMsg('m', p('Saved.', 'সেভ হয়েছে।'), 1);
+    } catch (e) { $('#sv').disabled = false; setMsg('m', emsg(e)); }
+  };
+}
+const KIND = { bazar: { who: 1, note: ['Item / note', 'কী কেনা হয়েছে'] }, deposits: { who: 1, note: ['Note (optional)', 'মন্তব্য (ঐচ্ছিক)'] }, costs: { who: 0, note: ['Title (rent, gas, wifi...)', 'খাত (ভাড়া, গ্যাস, ওয়াইফাই...)'] } };
+function tabList(k) {
+  const K = KIND[k], rows = S[k].slice().sort((a, b) => b.date.localeCompare(a.date)), tot = sum(rows, x => x.amount), ms = actives();
+  const dd = month === nowM() ? nowD() : month + '-01';
+  app.innerHTML = head(tt(k))
+    + (isAdmin ? '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="fD" value="' + dd + '" ' + dateAttr() + '></div>'
+      + (K.who ? '<div class="fg" style="margin:0"><label>' + p('Member', 'সদস্য') + '</label><select id="fW">' + ms.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('') + '</select></div>' : '')
+      + '<div class="fg" style="margin:0"><label>' + p('Amount', 'টাকা') + '</label><input type="number" id="fA" min="0" step="any"></div><div class="fg" style="margin:0"><label>' + p(K.note[0], K.note[1]) + '</label><input type="text" id="fN"></div><button class="btn btn-primary" id="ad">' + p('Add', 'যোগ করুন') + '</button></div><div class="msg" id="m"></div></div>' : '')
+    + '<div class="card"><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (K.who ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th>' + p('Note', 'বিবরণ') + '</th><th class="n">' + p('Amount', 'টাকা') + '</th>' + (isAdmin ? '<th class="no"></th>' : '') + '</tr></thead><tbody>'
+    + (rows.length ? rows.map(x => '<tr><td>' + esc(x.date) + '</td>' + (K.who ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td>' + esc(x.note || '') + '</td><td class="n">' + money(x.amount) + '</td>' + (isAdmin ? '<td class="n no"><button class="btn btn-sm btn-danger" data-del="' + x.id + '">' + p('Delete', 'মুছুন') + '</button></td>' : '') + '</tr>').join('') : '<tr><td colspan="5" class="muted">' + p('Nothing yet.', 'এখনো কিছু নেই।') + '</td></tr>')
+    + '</tbody></table></div><p style="margin:10px 0 0"><b>' + p('Total', 'মোট') + ': ' + money(tot) + '</b></p></div>';
+  if (!isAdmin) return;
+  $('#ad').onclick = async () => {
+    const date = $('#fD').value, amount = +$('#fA').value, note = $('#fN').value.trim(), uid = K.who ? $('#fW').value : '';
+    if (!date || !(amount > 0)) return setMsg('m', p('Enter a date and an amount.', 'তারিখ ও টাকার পরিমাণ দিন।'));
+    if (K.who && !uid) return setMsg('m', p('Add and approve a member first.', 'আগে সদস্য যোগ ও অনুমোদন করুন।'));
+    if (!K.who && !note) return setMsg('m', p('Enter a title.', 'খাতের নাম লিখুন।'));
+    $('#ad').disabled = true;
+    try { const d = { date, month: date.slice(0, 7), amount, note, createdAt: serverTimestamp() }; if (K.who) d.uid = uid; await addDoc(collection(db, k), d); await load(); renderTab(); bindMonth(); }
+    catch (e) { $('#ad').disabled = false; setMsg('m', emsg(e)); }
+  };
+  app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm(p('Delete this entry?', 'এই এন্ট্রি মুছবেন?'))) return; try { await deleteDoc(doc(db, k, b.dataset.del)); await load(); renderTab(); bindMonth(); } catch (e) { alert(emsg(e)); } });
+}
+function tabMembers() {
+  const rows = S.members.slice().sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1) || (a.name || '').localeCompare(b.name || ''));
+  const chip = s => '<span class="chip ' + (s === 'active' ? 'on' : 'wait') + '">' + (s === 'active' ? p('Active', 'সক্রিয়') : s === 'pending' ? p('Pending', 'অপেক্ষমান') : p('Inactive', 'নিষ্ক্রিয়')) + '</span>';
+  app.innerHTML = head(tt('members'), 1) + '<div class="card"><div class="tw"><table class="tbl"><thead><tr><th>' + p('Name', 'নাম') + '</th><th>' + p('Email', 'ইমেইল') + '</th><th>' + p('Status', 'অবস্থা') + '</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody>'
+    + rows.map(m => '<tr><td>' + esc(m.name) + (m.role === 'admin' ? ' <span class="chip">' + p('Manager', 'ম্যানেজার') + '</span>' : '') + '</td><td>' + esc(m.email) + '</td><td>' + chip(m.status) + '</td>'
+      + (isAdmin ? '<td class="n">' + (m.status !== 'active' ? '<button class="btn btn-sm btn-primary" data-st="active" data-id="' + m.id + '">' + p('Approve', 'অনুমোদন') + '</button> ' : (m.role !== 'admin' ? '<button class="btn btn-sm" data-st="inactive" data-id="' + m.id + '">' + p('Deactivate', 'নিষ্ক্রিয়') + '</button> ' : '')) + (m.role !== 'admin' ? '<button class="btn btn-sm btn-danger" data-rm="' + m.id + '">' + p('Remove', 'মুছুন') + '</button>' : '') + '</td>' : '') + '</tr>').join('')
+    + '</tbody></table></div>' + (isAdmin ? '<p class="muted" style="margin-bottom:0">' + p('New people register themselves, then you approve them here. Only active members are counted in meal rate and costs.', 'নতুনরা নিজে নিবন্ধন করবে, আপনি এখান থেকে অনুমোদন দেবেন। শুধু সক্রিয় সদস্যরাই হিসাবে ধরা হয়।') + '</p>' : '') + '</div>';
+  app.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { try { await setDoc(doc(db, 'members', b.dataset.id), { status: b.dataset.st }, { merge: true }); await load(); tabMembers(); } catch (e) { alert(emsg(e)); } });
+  app.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { if (!confirm(p('Remove this member?', 'এই সদস্যকে মুছবেন?'))) return; try { await deleteDoc(doc(db, 'members', b.dataset.rm)); await load(); tabMembers(); } catch (e) { alert(emsg(e)); } });
+}
+function tabAccount() {
+  app.innerHTML = head(tt('account'), 1) + '<div class="card"><h3 style="margin-top:0">' + esc(me.name) + '</h3><p class="muted" style="margin:0">' + esc(user.email) + ' &bull; ' + (isAdmin ? p('Manager', 'ম্যানেজার') : p('Member', 'সদস্য')) + '</p><h3>UID</h3><div class="uid" id="uid">' + esc(user.uid) + '</div><button class="btn btn-sm" id="cp">' + p('Copy UID', 'UID কপি') + '</button> <button class="btn btn-sm btn-danger" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>';
+  $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(user.uid); $('#cp').textContent = p('Copied', 'কপি হয়েছে'); } catch (e) {} };
+}
+
+/* ============ start ============ */
+onAuthStateChanged(auth, async u => {
+  user = u; me = null; isAdmin = false;
+  if (!u) { document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen('in'); }
+  app.innerHTML = '<div class="card center" style="text-align:center"><span class="spin"></span></div>';
+  try { await getDoc(doc(db, 'admins', u.uid)); isAdmin = true; } catch (e) { isAdmin = false; }   // rules allow this read only for the manager UID
+  try {
+    let s = await getDoc(mref());
+    if (!s.exists()) { await setDoc(mref(), { name: pendingName || u.displayName || (u.email || '').split('@')[0], email: u.email || '', role: isAdmin ? 'admin' : 'member', status: isAdmin ? 'active' : 'pending', createdAt: serverTimestamp() }); s = await getDoc(mref()); }
+    me = s.data();
+  } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p><div class="uid">' + esc(u.uid) + '</div><button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>'; return; }
+  if (!isAdmin && me.status !== 'active') return waitScreen();
+  tab = (location.hash || '').slice(1); if (!TABS[tab]) tab = 'dash';
+  await refresh();
+});
+</script>
+</body>
+</html>
