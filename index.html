@@ -159,7 +159,9 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
   };
   /* returning users: keep the page empty for a moment instead of flashing the login form */
   try { var th = localStorage.getItem('mm_theme'); if (th) document.documentElement.setAttribute('data-theme', th); if (localStorage.getItem('mm_open') === '1') document.body.classList.add('open'); } catch (e) {}
-  if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(false, lang); window.__staticLogin = true; }
+  window.__vw = /[?&]r=/.test(location.search);
+  if (window.__vw) { window.__ld(8); }
+  else if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(false, lang); window.__staticLogin = true; }
   else {
     /* returning user: paint the last screen (saved HTML) right now, before Firebase has even downloaded */
     try {
@@ -205,6 +207,7 @@ const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
 let lang = 'bn'; try { lang = localStorage.getItem('mm_lang') || 'bn'; const th = localStorage.getItem('mm_theme'); if (th) document.documentElement.setAttribute('data-theme', th); if (localStorage.getItem('mm_open') === '1') document.body.classList.add('open'); } catch (e) {}
 const p = (e, b) => lang === 'bn' ? b : e;
 const app = $('#app');
+const VID = new URLSearchParams(location.search).get('r');
 const nowM = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1); };
 const nowD = () => nowM() + '-' + pad(new Date().getDate());
 
@@ -353,7 +356,7 @@ function tabMeals() {
   if (isAdmin) {
     const cur = {}; S.meals.filter(x => x.date === mdate).forEach(x => cur[x.uid] = (cur[x.uid] || 0) + mv(x));
     h += '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="md" value="' + mdate + '" ' + dateAttr() + '></div></div><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th>' + p('Meals (whole day)', 'মিল (সারাদিনে মোট)') + '</th></tr></thead><tbody>'
-      + ms.map(m => '<tr data-u="' + m.id + '"><td>' + esc(m.name) + '</td><td><input type="number" min="0" step="0.5" inputmode="decimal" value="' + (cur[m.id] || 0) + '"></td></tr>').join('')
+      + ms.map(m => '<tr data-u="' + m.id + '"><td>' + esc(m.name) + '</td><td><input type="number" min="0" step="0.5" inputmode="decimal" value="' + (cur[m.id] || '') + '"></td></tr>').join('')
       + '</tbody></table></div><p style="margin:10px 0 0"><b>' + p('Day total', 'আজকের মোট মিল') + ': <span id="dt">0</span></b></p><div class="msg" id="m"></div><button class="btn btn-primary" id="sv">' + p('Save meals for this day', 'এই দিনের মিল সেভ করুন') + '</button></div>';
   }
   const mine = isAdmin ? S.meals.slice() : S.meals.filter(x => x.uid === user.uid);
@@ -443,6 +446,8 @@ const RCSS = '.rp{width:794px;height:1123px;position:relative;background:#fff;co
   + '.sg{display:flex;gap:30px;margin-top:46px}.sg div{flex:1;border-top:1px solid #1f2a37;padding-top:4px;text-align:center;font-size:13.5px;font-weight:600;color:#14304f}';
 const monthLabel = m => { const a = m.split('-'); return new Date(+a[0], +a[1] - 1, 1).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long', year: 'numeric' }); };
 
+const kvT = its => { let h = '<table class="t kt"><colgroup><col style="width:21%"><col style="width:29%"><col style="width:21%"><col style="width:29%"></colgroup>'; for (let i = 0; i < its.length; i += 2) { const a = its[i], c = its[i + 1]; h += '<tr><td class="k">' + esc(a[0]) + '</td><td class="v">' + esc(a[1]) + '</td>' + (c ? '<td class="k">' + esc(c[0]) + '</td><td class="v">' + esc(c[1]) + '</td>' : '<td class="k"></td><td class="v"></td>') + '</tr>'; } return h + '</table>'; };
+
 async function makePdf(title, items, file, period, meta) {
   meta = meta || {};
   if (!window.html2canvas) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
@@ -455,7 +460,7 @@ async function makePdf(title, items, file, period, meta) {
   try {
     if (!window.qrcode) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js');
     window.qrcode.stringToBytes = s => Array.from(new TextEncoder().encode(s));
-    const plain = String(meta.qrText || 'Meal Manager').replace(/https?:/gi, '').replace(/www\./gi, '').replace(/\//g, '-');
+    const plain = meta.qrUrl ? String(meta.qrText) : String(meta.qrText || 'Meal Manager').replace(/https?:/gi, '').replace(/www\./gi, '').replace(/\//g, '-');
     let q = null;
     ['M', 'L'].some(lv => { const t = window.qrcode(0, lv); t.addData(plain, 'Byte'); t.make(); q = t; return t.getModuleCount() <= 41; });
     const n = q.getModuleCount(); qr = { src: q.createDataURL(4, 8), w: n * 2 + 8 };
@@ -466,13 +471,12 @@ async function makePdf(title, items, file, period, meta) {
   const el = (cls, html) => { const d = document.createElement('div'); if (cls) d.className = cls; if (html != null) d.innerHTML = html; return d; };
   const newPage = () => {
     const pg = el('rp' + (lang === 'en' ? ' en' : ''), '<div class="rh"><div class="l"><small>' + p('Meal Manager', 'মিল ম্যানেজার') + '</small><b>' + esc(title) + '</b></div><div class="r"><b>' + esc(period || '') + '</b>' + esc(meta.id || '') + '<br>' + p('Generated', 'তৈরির তারিখ') + ': ' + gen + '</div></div><div class="rb"></div>'
-      + '<div class="rf">' + (qr ? '<img src="' + qr.src + '" style="width:' + qr.w + 'px;height:' + qr.w + 'px">' : '') + '<div class="ft"><b>' + p('Scan to verify', 'যাচাইয়ের জন্য স্ক্যান করুন') + '</b><br>' + p('The QR code holds the key figures of this report as plain text.', 'কিউআর কোডে এই রিপোর্টের মূল হিসাব লেখা আকারে আছে।') + '<br>' + p('Document ID', 'ডকুমেন্ট নং') + ': <b>' + esc(meta.id || '') + '</b></div><div class="rt">Developed by <b>Farhan Tanzid Shiyam</b><br><span class="pn"></span></div></div>');
+      + '<div class="rf">' + (qr ? '<img src="' + qr.src + '" style="width:' + qr.w + 'px;height:' + qr.w + 'px">' : '') + '<div class="ft"><b>' + (meta.online ? p('Scan to view online', 'অনলাইনে দেখতে স্ক্যান করুন') : p('Scan to verify', 'যাচাইয়ের জন্য স্ক্যান করুন')) + '</b><br>' + (meta.online ? p('The QR code opens this report on the website.', 'কিউআর কোড স্ক্যান করলে ওয়েবসাইটে এই রিপোর্ট দেখা যাবে।') : p('The QR code holds the key figures of this report as plain text.', 'কিউআর কোডে এই রিপোর্টের মূল হিসাব লেখা আকারে আছে।')) + '<br>' + p('Document ID', 'ডকুমেন্ট নং') + ': <b>' + esc(meta.id || '') + '</b></div><div class="rt">Developed by <b>Farhan Tanzid Shiyam</b><br><span class="pn"></span></div></div>');
     root.appendChild(pg); pages.push(pg); body = pg.querySelector('.rb'); return body;
   };
   const over = () => body.scrollHeight > body.clientHeight + 1;
   const place = d => { body.appendChild(d); if (over()) { body.removeChild(d); newPage().appendChild(d); } };
   const head = (t, n, cont) => el('sh', (n ? '<span>' + pad(n) + '</span>' : '') + esc(t) + (cont ? ' <em>(' + p('continued', 'চলমান') + ')</em>' : ''));
-  const kvT = its => { let h = '<table class="t kt"><colgroup><col style="width:21%"><col style="width:29%"><col style="width:21%"><col style="width:29%"></colgroup>'; for (let i = 0; i < its.length; i += 2) { const a = its[i], c = its[i + 1]; h += '<tr><td class="k">' + esc(a[0]) + '</td><td class="v">' + esc(a[1]) + '</td>' + (c ? '<td class="k">' + esc(c[0]) + '</td><td class="v">' + esc(c[1]) + '</td>' : '<td class="k"></td><td class="v"></td>') + '</tr>'; } return h + '</table>'; };
   let num = 0;
   newPage();
   items.forEach(b => {
@@ -480,7 +484,7 @@ async function makePdf(title, items, file, period, meta) {
     if (b.type === 'info') { place(el('', kvT(b.items))); return; }
     if (b.type === 'note') { place(el('note', esc(b.text))); return; }
     if (b.type === 'verify') {
-      place(el('', '<div class="vf"><b>' + p('Document verification', 'ডকুমেন্ট যাচাই') + '</b><p>' + p('Scan the QR code in the footer of any page to read the key figures of this report as plain text.', 'যেকোনো পাতার নিচের কিউআর কোড স্ক্যান করলে এই রিপোর্টের মূল হিসাব লেখা আকারে দেখা যাবে।') + '</p><p>' + p('Document ID', 'ডকুমেন্ট নং') + ': <b>' + esc(meta.id || '') + '</b></p></div><div class="sg">' + b.sign.map(l => '<div>' + esc(l) + '</div>').join('') + '</div>'));
+      place(el('', '<div class="vf"><b>' + p('Document verification', 'ডকুমেন্ট যাচাই') + '</b><p>' + (meta.online ? p('Scan the QR code in the footer of any page to open this report online.', 'যেকোনো পাতার নিচের কিউআর কোড স্ক্যান করলে ওয়েবসাইটে এই রিপোর্ট দেখা যাবে।') : p('Scan the QR code in the footer of any page to read the key figures of this report as plain text.', 'যেকোনো পাতার নিচের কিউআর কোড স্ক্যান করলে এই রিপোর্টের মূল হিসাব লেখা আকারে দেখা যাবে।')) + '</p><p>' + p('Document ID', 'ডকুমেন্ট নং') + ': <b>' + esc(meta.id || '') + '</b></p></div><div class="sg">' + b.sign.map(l => '<div>' + esc(l) + '</div>').join('') + '</div>'));
       return;
     }
     const n = ++num;
@@ -523,26 +527,35 @@ async function makePdf(title, items, file, period, meta) {
   } finally { root.remove(); }
 }
 
-async function exportPdf() {
-  const kind = ($('#pk') || {}).value || 'month', ms = actives(), c = calc(), loc = lang === 'bn' ? 'bn-BD' : 'en-GB';
-  const tk = v => '৳' + money(v), fx = v => String(Math.round(v * 100) / 100), items = [];
-  const dd = d => { const a = d.split('-').map(Number); return new Date(a[0], a[1] - 1, a[2]); };
-  const fd = d => dd(d).toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' });
-  const wd = d => dd(d).toLocaleDateString(loc, { weekday: 'long' });
+const viewBase = () => /^https?:$/.test(location.protocol) ? location.origin + (lastSeg in TABS ? pathBase : location.pathname) : '';
+const token = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => (b % 36).toString(36)).join('');
+const headH = (t, n) => '<div class="sh">' + (n ? '<span>' + pad(n) + '</span>' : '') + esc(t) + '</div>';
+const tblH = b => {
+  const N = b.cols.length;
+  let h = '<div class="sc"><table class="t dd"><colgroup>' + b.cols.map(c => '<col style="width:' + c[1] + '">').join('') + '</colgroup><thead><tr>' + b.cols.map(c => '<th class="' + (c[2] || '') + '">' + esc(c[0]) + '</th>').join('') + '</tr></thead><tbody>';
+  if (!b.rows.length) h += '<tr><td class="emp" colspan="' + N + '">' + esc(b.empty || '-') + '</td></tr>';
+  b.rows.forEach(r => { h += '<tr>' + r.map((c, i) => '<td class="' + (b.cols[i][2] || '') + '">' + c + '</td>').join('') + '</tr>'; });
+  if (b.full) h += '<tr class="tf">' + b.full.map((c, i) => '<td class="' + (b.cols[i][2] || '') + '">' + c + '</td>').join('') + '</tr>';
+  else if (b.foot) h += '<tr class="tf"><td colspan="' + (N - 1) + '">' + esc(b.foot[0]) + '</td><td class="r">' + esc(b.foot[1]) + '</td></tr>';
+  return h + '</tbody></table></div>';
+};
+
+function buildReport(kind, d, genT) {
+  const ms = actives(), c = calc(), loc = lang === 'bn' ? 'bn-BD' : 'en-GB', items = [];
+  const tk = v => '৳' + money(v), fx = v => String(Math.round(v * 100) / 100);
+  const dd = x => { const a = x.split('-').map(Number); return new Date(a[0], a[1] - 1, a[2]); };
+  const fd = x => dd(x).toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' });
+  const wd = x => dd(x).toLocaleDateString(loc, { weekday: 'long' });
   const byDate = (a, b) => a.date.localeCompare(b.date);
   const SL = ['#', '6%', 'c'];
   const bazarCols = [SL, [p('Date', 'তারিখ'), '18%'], [p('Description', 'বিবরণ'), '36%'], [p('Bought by', 'কে বাজার করেছেন'), '22%'], [p('Amount', 'টাকা'), '18%', 'r']];
   const costCols = [SL, [p('Date', 'তারিখ'), '20%'], [p('Description', 'বিবরণ'), '52%'], [p('Amount', 'টাকা'), '22%', 'r']];
   const bazarRows = list => list.slice().sort(byDate).map((x, i) => [String(i + 1), esc(fd(x.date)), esc(x.note || '-'), esc(nameOf(x.uid)), tk(x.amount)]);
   const costRows = list => list.slice().sort(byDate).map((x, i) => [String(i + 1), esc(fd(x.date)), esc(x.note || '-'), tk(x.amount)]);
-  const genT = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const info = (type, per, id) => ({ type: 'info', items: [[p('Report type', 'রিপোর্টের ধরন'), type], [p('Period', 'সময়কাল'), per], [p('Document ID', 'ডকুমেন্ট নং'), id], [p('Generated on', 'তৈরির সময়'), genT], [p('Prepared by', 'প্রস্তুতকারক'), (me && me.name) || (user && user.email) || ''], [p('Active members', 'সক্রিয় সদস্য'), String(ms.length)]] });
   const verify = { type: 'verify', sign: [p('Prepared by', 'প্রস্তুতকারক'), p('Checked by', 'যাচাইকারী'), p('Approved by', 'অনুমোদনকারী')] };
-  const qrText = lines => lines.join('\n');
 
   if (kind === 'day') {
-    const d = ($('#pd') || {}).value;
-    if (!d || d.slice(0, 7) !== month) throw new Error(p('Pick a date inside the selected month.', 'নির্বাচিত মাসের ভেতরের একটি তারিখ দিন।'));
     const ml = S.meals.filter(x => x.date === d), bz = S.bazar.filter(x => x.date === d), oc = S.costs.filter(x => x.date === d);
     const per = ms.map(m => sum(ml.filter(x => x.uid === m.id), mv)), tm = sum(per, v => v), id = 'MM-D-' + d.replace(/-/g, '');
     items.push(info(p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), fd(d) + ' (' + wd(d) + ')', id));
@@ -553,20 +566,19 @@ async function exportPdf() {
     items.push({ type: 'list', title: p('Bazar details', 'বাজারের বিবরণ'), empty: p('No bazar on this day', 'এই দিনে কোনো বাজার নেই'), cols: bazarCols, rows: bazarRows(bz), foot: bz.length ? [p('Total bazar', 'মোট বাজার'), tk(sum(bz, x => x.amount))] : null });
     items.push({ type: 'list', title: p('Other costs', 'অন্যান্য খরচ'), empty: p('No other costs on this day', 'এই দিনে কোনো খরচ নেই'), cols: costCols, rows: costRows(oc), foot: oc.length ? [p('Total other costs', 'মোট অন্যান্য খরচ'), tk(sum(oc, x => x.amount))] : null });
     items.push(verify);
-    const qt = qrText(['MEAL MANAGER - DAY', 'ID: ' + id, 'Date: ' + d, 'Meals: ' + fx(tm), 'Bazar: ' + fx(sum(bz, x => x.amount)), 'Other: ' + fx(sum(oc, x => x.amount))]);
-    await makePdf(p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), items, 'Meal-day-' + d + '.pdf', fd(d), { id, qrText: qt });
-    return;
+    return { items, id, title: p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), period: fd(d), file: 'Meal-day-' + d + '.pdf',
+      facts: ['MEAL MANAGER - DAY', 'ID: ' + id, 'Date: ' + d, 'Meals: ' + fx(tm), 'Bazar: ' + fx(sum(bz, x => x.amount)), 'Other: ' + fx(sum(oc, x => x.amount))] };
   }
 
   const id = 'MM-M-' + month.replace('-', ''), dates = Array.from(new Set(S.meals.map(x => x.date))).sort();
-  const dayTot = dates.map(d => sum(S.meals.filter(x => x.date === d), mv));
+  const dayTot = dates.map(x => sum(S.meals.filter(y => y.date === x), mv));
   const peakI = dayTot.reduce((bi, v, i) => v > (dayTot[bi] || 0) ? i : bi, 0), top = c.rows.slice().sort((a, b) => b.paid - a.paid)[0];
   items.push(info(p('Monthly report', 'মাসিক রিপোর্ট'), monthLabel(month), id));
   items.push({ type: 'tiles', title: p('Overview', 'সারসংক্ষেপ'), items: [[p('Total bazar', 'মোট বাজার'), tk(c.bz)], [p('Total meals', 'মোট মিল'), money(c.totM)], [p('Meal rate', 'মিল রেট'), tk(c.rate)], [p('Other costs', 'অন্যান্য খরচ'), tk(c.oc)], [p('Other cost per member', 'প্রতি সদস্যের অন্য খরচ'), tk(c.share)], [p('Active members', 'সক্রিয় সদস্য'), String(ms.length)]] });
   items.push({ type: 'kv', title: p('Highlights', 'মূল তথ্য'), items: [[p('Days recorded', 'রেকর্ড করা দিন'), String(dates.length)], [p('Average meals per day', 'দিনে গড় মিল'), dates.length ? money(c.totM / dates.length) : '-'], [p('Highest-meal day', 'সর্বোচ্চ মিলের দিন'), dates.length ? fd(dates[peakI]) + ' (' + money(dayTot[peakI]) + ')' : '-'], [p('Bazar entries', 'বাজারের এন্ট্রি'), String(S.bazar.length)], [p('Top bazar contributor', 'সবচেয়ে বেশি বাজার'), top && top.paid > 0 ? top.m.name + ' (' + tk(top.paid) + ')' : '-'], [p('Other cost entries', 'অন্য খরচের এন্ট্রি'), String(S.costs.length)]] });
   items.push({ type: 'list', title: p('Day-wise meal register', 'দিনভিত্তিক মিলের তালিকা'), empty: p('No meals recorded', 'কোনো মিল নেই'),
     cols: [SL, [p('Date', 'তারিখ'), '22%'], [p('Meals by member', 'সদস্যভিত্তিক মিল'), '52%'], [p('Total', 'মোট'), '20%', 'r']],
-    rows: dates.map((d, i) => [String(i + 1), esc(fd(d)) + '<small>' + esc(wd(d)) + '</small>', ms.map(m => { const v = sum(S.meals.filter(x => x.date === d && x.uid === m.id), mv); return v ? '<span class="cp">' + esc(m.name) + '<b>' + money(v) + '</b></span>' : ''; }).join(''), money(dayTot[i])]),
+    rows: dates.map((x, i) => [String(i + 1), esc(fd(x)) + '<small>' + esc(wd(x)) + '</small>', ms.map(m => { const v = sum(S.meals.filter(y => y.date === x && y.uid === m.id), mv); return v ? '<span class="cp">' + esc(m.name) + '<b>' + money(v) + '</b></span>' : ''; }).join(''), money(dayTot[i])]),
     foot: dates.length ? [p('Total meals', 'মোট মিল'), money(c.totM)] : null });
   items.push({ type: 'list', title: p('Bazar details', 'বাজারের বিবরণ'), empty: p('No bazar recorded', 'কোনো বাজার নেই'), cols: bazarCols, rows: bazarRows(S.bazar), foot: S.bazar.length ? [p('Total bazar', 'মোট বাজার'), tk(c.bz)] : null });
   items.push({ type: 'list', title: p('Other costs', 'অন্যান্য খরচ'), empty: p('No other costs recorded', 'কোনো অন্য খরচ নেই'), cols: costCols, rows: costRows(S.costs), foot: S.costs.length ? [p('Total other costs', 'মোট অন্যান্য খরচ'), tk(c.oc)] : null });
@@ -579,14 +591,92 @@ async function exportPdf() {
   items.push({ type: 'tiles', title: p('Settlement summary', 'নিষ্পত্তির সারসংক্ষেপ'), items: [[p('Total to receive', 'মোট পাওনা'), tk(recv)], [p('Total to pay', 'মোট দেনা'), tk(pay)], [p('Total meals', 'মোট মিল'), money(c.totM)]] });
   items.push({ type: 'note', text: p('Meal rate = total bazar ÷ total meals. Meal cost = meals × meal rate. Balance = bazar paid − meal cost − other share. Receivable = gets back, Payable = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। মিল খরচ = মিল × মিল রেট। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। পাবেন = ফেরত পাবেন, দেবেন = দিতে হবে।') });
   items.push(verify);
-  const qt = qrText(['MEAL MANAGER - MONTH', 'ID: ' + id, 'Period: ' + month, 'Bazar: ' + fx(c.bz), 'Meals: ' + fx(c.totM), 'Rate: ' + fx(c.rate), 'Other: ' + fx(c.oc), 'Members: ' + c.rows.length]);
-  await makePdf(p('Monthly report', 'মাসিক রিপোর্ট'), items, 'Meal-month-' + month + '.pdf', monthLabel(month), { id, qrText: qt });
+  return { items, id, title: p('Monthly report', 'মাসিক রিপোর্ট'), period: monthLabel(month), file: 'Meal-month-' + month + '.pdf',
+    facts: ['MEAL MANAGER - MONTH', 'ID: ' + id, 'Period: ' + month, 'Bazar: ' + fx(c.bz), 'Meals: ' + fx(c.totM), 'Rate: ' + fx(c.rate), 'Other: ' + fx(c.oc), 'Members: ' + c.rows.length] };
+}
+
+/* plain data copy of the report, saved online so the QR link can show it */
+const snapData = (kind, d) => {
+  const k = kind === 'day' ? (x => x.date === d) : (() => true), nt = s => String(s || '').slice(0, 200);
+  return {
+    members: S.members.map(m => ({ id: m.id, name: nt(m.name), status: m.status || '' })),
+    meals: S.meals.filter(k).map(x => { const o = { date: x.date, uid: x.uid }; ['n', 'b', 'l', 'd'].forEach(f => { if (x[f] != null) o[f] = +x[f] || 0; }); return o; }),
+    bazar: S.bazar.filter(k).map(x => ({ date: x.date, uid: x.uid, amount: +x.amount || 0, note: nt(x.note) })),
+    costs: S.costs.filter(k).map(x => ({ date: x.date, amount: +x.amount || 0, note: nt(x.note) }))
+  };
+};
+
+async function exportPdf() {
+  const kind = ($('#pk') || {}).value || 'month', d = ($('#pd') || {}).value;
+  if (kind === 'day' && (!d || d.slice(0, 7) !== month)) throw new Error(p('Pick a date inside the selected month.', 'নির্বাচিত মাসের ভেতরের একটি তারিখ দিন।'));
+  const genT = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const rep = buildReport(kind, d, genT);
+  let qrText = rep.facts.join('\n'), online = false, warn = '';
+  const base = viewBase();
+  if (!base) warn = p('The QR holds plain text because this page is not opened from your website (https).', 'এই পেজ ওয়েবসাইট (https) থেকে খোলা নয়, তাই QR-এ লিংকের বদলে লেখা আকারে হিসাব আছে।');
+  else {
+    const key = rep.id + '-' + token();
+    try {
+      await Promise.race([
+        setDoc(doc(db, 'reports', key), { kind, month, date: kind === 'day' ? d : '', rid: rep.id, lang, by: user.uid, name: (me && me.name) || '', genT, createdAt: serverTimestamp(), data: snapData(kind, d) }),
+        new Promise((_, rj) => setTimeout(() => rj(new Error('timeout')), 8000))
+      ]);
+      qrText = base + '?r=' + key; online = true;
+    } catch (e) {
+      warn = (e && e.code === 'permission-denied')
+        ? p('PDF is ready, but the online view is not active: add the "reports" rule in Firestore Rules. The QR holds plain text for now.', 'PDF তৈরি হয়েছে, কিন্তু অনলাইন ভিউ চালু নেই: Firestore Rules-এ "reports" রুলটি যোগ করুন। আপাতত QR-এ লেখা আকারে হিসাব আছে।')
+        : p('PDF is ready, but the online copy could not be saved (check internet). The QR holds plain text.', 'PDF তৈরি হয়েছে, কিন্তু অনলাইন কপি সেভ হয়নি (ইন্টারনেট দেখুন)। QR-এ লেখা আকারে হিসাব আছে।');
+    }
+  }
+  await makePdf(rep.title, rep.items, rep.file, rep.period, { id: rep.id, qrText, qrUrl: online, online });
+  if (warn) alert(warn);
+}
+
+/* ============ public report page: opened by scanning the QR (?r=KEY), no login ============ */
+const VCSS = '.vwrap{max-width:900px;margin:0 auto}.vwrap .vt{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap}'
+  + '.rp.vw{width:auto;height:auto;overflow:hidden;padding:0 0 20px;border:1px solid #d5dde8;border-radius:10px}.vw .vh{background:#14304f;color:#fff;border-bottom:5px solid #c9a227;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}'
+  + '.vw .vh small{display:block;font-size:13px;color:#b9c7d9;font-weight:600}.vw .vh b{display:block;font-size:24px;line-height:1.35}.vw .vh .vr{text-align:right;font-size:13px;line-height:1.65;color:#d5deea}.vw .vh .vr b{font-size:17px;color:#fff}'
+  + '.vw .vb{margin:14px 20px 0;padding:8px 12px;background:#e3f3e8;color:#1b6e3c;border-radius:6px;font-size:13.5px}.vw .vc{padding:0 20px}.vw .sc{overflow-x:auto}.vw .t{min-width:600px}.vw .kt{min-width:0}'
+  + '@media(max-width:600px){.vw .tiles{grid-template-columns:1fr 1fr}.vw .vh .vr{text-align:left}.vw .vc{padding:0 12px}.vw .vb{margin:14px 12px 0}}';
+async function showReport(key) {
+  document.body.classList.remove('in'); $('#side').innerHTML = '';
+  const msg = (h, t) => { app.innerHTML = '<div class="card center"><h2>' + esc(h) + '</h2><p class="muted">' + esc(t) + '</p></div>'; };
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(key)) return msg(p('Report not found', 'রিপোর্ট পাওয়া যায়নি'), p('This link is not valid.', 'এই লিংকটি সঠিক নয়।'));
+  ld(30);
+  let snap;
+  try {
+    const s = await getDoc(doc(db, 'reports', key));
+    if (!s.exists()) return msg(p('Report not found', 'রিপোর্ট পাওয়া যায়নি'), p('This report does not exist or was removed.', 'এই রিপোর্টটি নেই বা মুছে ফেলা হয়েছে।'));
+    snap = s.data();
+  } catch (e) {
+    return msg(p('Cannot open report', 'রিপোর্ট খোলা যায়নি'), e && e.code === 'permission-denied' ? p('Online view is not enabled. The manager must add the "reports" rule in Firestore.', 'অনলাইন ভিউ চালু নেই। ম্যানেজারকে Firestore-এ "reports" রুল যোগ করতে হবে।') : emsg(e));
+  }
+  lang = snap.lang === 'en' ? 'en' : 'bn'; S = snap.data; month = snap.month; me = { name: snap.name }; user = { email: '' };
+  const draw = () => {
+    const rep = buildReport(snap.kind, snap.date, snap.genT); let n = 0;
+    const body = rep.items.map(b => {
+      if (b.type === 'info') return kvT(b.items);
+      if (b.type === 'note') return '<div class="note">' + esc(b.text) + '</div>';
+      if (b.type === 'verify' || b.type === 'pagebreak') return '';
+      n++;
+      if (b.type === 'tiles') return headH(b.title, n) + '<div class="tiles">' + b.items.map(i => '<div class="tile"><small>' + esc(i[0]) + '</small><b>' + esc(i[1]) + '</b></div>').join('') + '</div>';
+      if (b.type === 'kv') return headH(b.title, n) + kvT(b.items);
+      return headH(b.title, n) + tblH(b);
+    }).join('');
+    const base = viewBase();
+    app.innerHTML = '<div class="vwrap"><style>' + RCSS + VCSS + '</style><div class="vt"><button class="btn btn-sm" id="vl">' + (lang === 'bn' ? 'English' : 'বাংলা') + '</button>' + (base ? '<a class="btn btn-sm" href="' + esc(base) + '">' + p('Open Meal Manager', 'মিল ম্যানেজার খুলুন') + '</a>' : '') + '</div>'
+      + '<div class="rp vw' + (lang === 'en' ? ' en' : '') + '"><div class="vh"><div><small>' + p('Meal Manager', 'মিল ম্যানেজার') + '</small><b>' + esc(rep.title) + '</b></div><div class="vr"><b>' + esc(rep.period) + '</b>' + esc(rep.id) + '<br>' + p('Generated', 'তৈরির সময়') + ': ' + esc(snap.genT || '') + '</div></div>'
+      + '<div class="vb">' + p('Online copy of this report, saved when the PDF was generated.', 'এই রিপোর্টের অনলাইন কপি, পিডিএফ তৈরির সময় সংরক্ষিত।') + '</div><div class="vc">' + body + '</div></div></div>';
+    document.title = rep.title + ' - Meal Manager'; $('#vl').onclick = () => { lang = lang === 'bn' ? 'en' : 'bn'; draw(); };
+  };
+  draw();
 }
 
 /* instant screen from the last visit (refreshed quietly in the background) */
 let CACHE = null, PRE = null;
 function saveCache() { try { if (user && me && month === nowM()) localStorage.setItem('mm_c', JSON.stringify({ uid: user.uid, email: user.email, me, isAdmin, S, month })); } catch (e) {} }
 (function earlyCache() {
+  if (VID) return;
   try {
     const h = localStorage.getItem('mm_hint'), c = JSON.parse(localStorage.getItem('mm_c') || 'null');
     if (!h || h === '1' || !c || c.uid !== h || c.month !== nowM() || !c.me || !(c.isAdmin || c.me.status === 'active')) return;
@@ -597,8 +687,8 @@ function saveCache() { try { if (user && me && month === nowM()) localStorage.se
   } catch (e) { CACHE = null; }
 })();
 
-if (!CACHE && !window.__snap) ld(12);
-onAuthStateChanged(auth, async u => {
+if (!CACHE && !window.__snap && !VID) ld(12);
+if (VID) showReport(VID); else onAuthStateChanged(auth, async u => {
   const quiet = !!(CACHE && u && CACHE.uid === u.uid);
   user = u; me = null; isAdmin = false;
   try { if (u) localStorage.setItem('mm_hint', u.uid); else { localStorage.removeItem('mm_hint'); localStorage.removeItem('mm_c'); localStorage.removeItem('mm_s'); } } catch (e) {}
