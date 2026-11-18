@@ -74,9 +74,28 @@ body:not(.open) .nav{justify-content:center;padding:10px 0}
 </head>
 <body>
 <aside class="side" id="side"></aside>
-<main class="wrap" id="app"><div class="card center" style="text-align:center"><span class="spin"></span></div></main>
+<main class="wrap" id="app"></main>
 <footer class="app-foot">Developed by <b>Farhan Tanzid Shiyam</b></footer>
 
+<script>
+/* login page appears instantly (plain HTML); Firebase then checks the saved session in the background */
+(function () {
+  var lang = 'bn', hint = '';
+  try { lang = localStorage.getItem('mm_lang') || 'bn'; hint = localStorage.getItem('mm_hint') || ''; } catch (e) {}
+  function p(e, b, l) { return l === 'bn' ? b : e; }
+  function fg(id, l, type, extra) { return '<div class="fg"><label for="' + id + '">' + l + '</label><input id="' + id + '" type="' + type + '" ' + (extra || '') + '></div>'; }
+  window.__authHTML = function (up, l) {
+    return '<div class="card center"><h2>' + p('Meal Manager', 'মিল ম্যানেজার', l) + '</h2><p class="muted">' + (up ? p('Create a new account', 'নতুন অ্যাকাউন্ট খুলুন', l) : p('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন', l)) + '</p>'
+      + (up ? fg('uN', p('Your name', 'আপনার নাম', l), 'text') : '') + fg('uE', p('Email', 'ইমেইল', l), 'email', 'autocomplete="username" autocapitalize="off"') + fg('uP', p('Password (min 6)', 'পাসওয়ার্ড (কমপক্ষে ৬)', l), 'password', 'autocomplete="' + (up ? 'new' : 'current') + '-password"')
+      + '<div class="msg" id="m"></div><button class="btn btn-primary" id="go">' + (up ? p('Register', 'নিবন্ধন করুন', l) : p('Sign in', 'সাইন ইন', l)) + '</button> <button class="btn" id="gg">' + p('Continue with Google', 'গুগল দিয়ে লগইন', l) + '</button>'
+      + '<p style="margin-bottom:0"><button class="lnk" id="sw">' + (up ? p('Already have an account? Sign in', 'অ্যাকাউন্ট আছে? সাইন ইন', l) : p('New here? Register', 'নতুন? নিবন্ধন করুন', l)) + '</button>' + (up ? '' : ' &nbsp;·&nbsp; <button class="lnk" id="fp">' + p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?', l) + '</button>') + '</p></div>';
+  };
+  /* returning users: keep the page empty for a moment instead of flashing the login form */
+  if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(false, lang); window.__staticLogin = true; }
+  /* a click made before Firebase finished loading is replayed once it is ready */
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#go,#gg'); if (b && !window.__ready) { window.__early = b.id; } });
+})();
+</script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -141,10 +160,8 @@ function emsg(e) {
 /* ============ login / register ============ */
 function authScreen(mode) {
   const up = mode === 'up';
-  app.innerHTML = '<div class="card center"><h2>' + p('Meal Manager', 'মিল ম্যানেজার') + '</h2><p class="muted">' + (up ? p('Create a new account', 'নতুন অ্যাকাউন্ট খুলুন') : p('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন')) + '</p>'
-    + (up ? fg('uN', p('Your name', 'আপনার নাম'), 'text') : '') + fg('uE', p('Email', 'ইমেইল'), 'email', 'autocomplete="username" autocapitalize="off"') + fg('uP', p('Password (min 6)', 'পাসওয়ার্ড (কমপক্ষে ৬)'), 'password', 'autocomplete="' + (up ? 'new' : 'current') + '-password"')
-    + '<div class="msg" id="m"></div><button class="btn btn-primary" id="go">' + (up ? p('Register', 'নিবন্ধন করুন') : p('Sign in', 'সাইন ইন')) + '</button> <button class="btn" id="gg">' + p('Continue with Google', 'গুগল দিয়ে লগইন') + '</button>'
-    + '<p style="margin-bottom:0"><button class="lnk" id="sw">' + (up ? p('Already have an account? Sign in', 'অ্যাকাউন্ট আছে? সাইন ইন') : p('New here? Register', 'নতুন? নিবন্ধন করুন')) + '</button>' + (up ? '' : ' &nbsp;·&nbsp; <button class="lnk" id="fp">' + p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?') + '</button>') + '</p></div>';
+  if (!(window.__staticLogin && !up && $('#go'))) app.innerHTML = window.__authHTML(up, lang);
+  window.__staticLogin = false;
   const go = async () => {
     const em = $('#uE').value.trim(), pw = $('#uP').value, nm = up ? $('#uN').value.trim() : '';
     if (!em || !pw || (up && !nm)) return setMsg('m', p('Fill in all fields.', 'সব ঘর পূরণ করুন।'));
@@ -158,6 +175,7 @@ function authScreen(mode) {
   $('#gg').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { setMsg('m', emsg(e)); } };
   $('#sw').onclick = () => authScreen(up ? 'in' : 'up');
   if ($('#fp')) $('#fp').onclick = async () => { const em = $('#uE').value.trim(); if (!em) return setMsg('m', p('Type your email first.', 'আগে ইমেইল লিখুন।')); try { await sendPasswordResetEmail(auth, em); setMsg('m', p('Reset link sent to your email.', 'রিসেট লিংক ইমেইলে পাঠানো হয়েছে।'), 1); } catch (e) { setMsg('m', emsg(e)); } };
+  window.__ready = true; if (window.__early) { const id = window.__early; window.__early = null; const eb = $('#' + id); if (eb) eb.click(); }
 }
 function waitScreen() {
   document.body.classList.remove('in'); $('#side').innerHTML = '';
@@ -226,6 +244,17 @@ function tabDash() {
     + '</tbody></table></div><p class="muted" style="margin-bottom:0">' + p('Meal rate = total bazar ÷ total meals. Bazar money a member spends counts as their contribution. Balance = bazar paid − meal cost − other share. Positive = gets back, negative = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। যে সদস্য বাজার করেছেন, সেই টাকাই তার জমা হিসেবে ধরা হয়। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। ধনাত্মক = ফেরত পাবে, ঋণাত্মক = দিতে হবে।') + '</p></div>';
 }
 const dateAttr = () => 'min="' + month + '-01" max="' + month + '-31"';
+function askPass() {
+  return new Promise(res => {
+    const o = document.createElement('div'); o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px';
+    o.innerHTML = '<div class="card" style="max-width:340px;width:100%;margin:0"><h3 style="margin-top:0">' + p('Password required to delete', 'মুছতে পাসওয়ার্ড দিন') + '</h3><input type="password" id="pwx" name="pw' + Date.now() + '" value="" autocomplete="new-password" style="width:100%"><div class="msg" id="pwm"></div><button class="btn btn-danger" id="pwok">' + p('Delete', 'মুছুন') + '</button> <button class="btn" id="pwno">' + p('Cancel', 'বাতিল') + '</button></div>';
+    document.body.appendChild(o); const i = o.querySelector('#pwx'); i.value = ''; setTimeout(() => i.focus(), 30);
+    const end = v => { o.remove(); res(v); };
+    const go = () => { if (i.value === '1122') end(true); else { o.querySelector('#pwm').textContent = p('Wrong password.', 'পাসওয়ার্ড ভুল।'); i.value = ''; i.focus(); } };
+    o.querySelector('#pwok').onclick = go; o.querySelector('#pwno').onclick = () => end(false);
+    i.onkeydown = e => { if (e.key === 'Enter') go(); else if (e.key === 'Escape') end(false); };
+  });
+}
 function tabMeals() {
   const ms = actives(); let h = head(tt('meals'));
   if (isAdmin) {
@@ -236,12 +265,14 @@ function tabMeals() {
   }
   const mine = isAdmin ? S.meals.slice() : S.meals.filter(x => x.uid === user.uid);
   mine.sort((a, b) => b.date.localeCompare(a.date));
-  h += '<div class="card"><h3 style="margin-top:0">' + (isAdmin ? p('All entries this month', 'এই মাসের সব এন্ট্রি') : p('My meals this month', 'এই মাসে আমার মিল')) + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (isAdmin ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th class="n">' + p('Meals', 'মিল') + '</th></tr></thead><tbody>'
-    + (mine.length ? mine.map(x => '<tr><td>' + esc(x.date) + '</td>' + (isAdmin ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td class="n"><b>' + money(mv(x)) + '</b></td></tr>').join('') : '<tr><td colspan="3" class="muted">' + p('No meals recorded.', 'কোনো মিল নেই।') + '</td></tr>') + '</tbody></table></div></div>';
+  h += '<div class="card"><h3 style="margin-top:0">' + (isAdmin ? p('All entries this month', 'এই মাসের সব এন্ট্রি') : p('My meals this month', 'এই মাসে আমার মিল')) + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (isAdmin ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th class="n">' + p('Meals', 'মিল') + '</th>' + (isAdmin ? '<th></th>' : '') + '</tr></thead><tbody>'
+    + (mine.length ? mine.map(x => '<tr><td>' + esc(x.date) + '</td>' + (isAdmin ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td class="n"><b>' + money(mv(x)) + '</b></td>' + (isAdmin ? '<td class="n"><button class="btn btn-sm" data-ed="' + esc(x.date) + '">' + p('Edit', 'এডিট') + '</button> <button class="btn btn-sm btn-danger" data-md="' + x.id + '">' + p('Delete', 'মুছুন') + '</button></td>' : '') + '</tr>').join('') : '<tr><td colspan="4" class="muted">' + p('No meals recorded.', 'কোনো মিল নেই।') + '</td></tr>') + '</tbody></table></div></div>';
   app.innerHTML = h;
   if (!isAdmin) return;
   const upd = () => { let t = 0; app.querySelectorAll('tr[data-u] input').forEach(i => t += Math.max(0, +i.value || 0)); $('#dt').textContent = money(t); };
   app.querySelectorAll('tr[data-u] input').forEach(i => i.oninput = upd); upd();
+  app.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { mdate = b.dataset.ed; tabMeals(); bindMonth(); setMsg('m', p('Editing ', 'এডিট করছেন: ') + mdate + p(' - change the numbers and press Save.', ' - সংখ্যা বদলে সেভ চাপুন।'), 1); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  app.querySelectorAll('[data-md]').forEach(b => b.onclick = async () => { if (!(await askPass())) return; try { await deleteDoc(doc(db, 'meals', b.dataset.md)); await load(); tabMeals(); bindMonth(); } catch (e) { alert(emsg(e)); } });
   $('#md').onchange = e => { if (e.target.value) { mdate = e.target.value; tabMeals(); bindMonth(); } };
   $('#sv').onclick = async () => {
     $('#sv').disabled = true;
@@ -389,6 +420,7 @@ async function exportPdf() {
 /* ============ start ============ */
 onAuthStateChanged(auth, async u => {
   user = u; me = null; isAdmin = false;
+  try { u ? localStorage.setItem('mm_hint', '1') : localStorage.removeItem('mm_hint'); } catch (e) {}
   if (!u) { document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen('in'); }
   app.innerHTML = '<div class="card center" style="text-align:center"><span class="spin"></span></div>';
   const pMe = getDoc(mref()); pMe.catch(() => {});
