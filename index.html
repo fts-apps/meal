@@ -42,6 +42,7 @@ input,select{background:var(--input-bg);border:1px solid var(--border);border-ra
 .stat{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel)}
 .stat small{display:block;color:var(--muted);font-size:12.5px}.stat b{display:block;font-size:20px;margin-top:2px}
 .frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end;margin-bottom:12px}
+.pk{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pko{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border:2px solid var(--border);border-radius:12px;background:var(--panel);cursor:pointer;transition:border-color .15s,background .15s}.pko:hover{border-color:var(--primary)}.pko .pi{flex:none;width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted)}.pko .pt{display:block;font-weight:700;font-size:14.5px;line-height:1.3}.pko .ps{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}.pko .pc{flex:none;margin-left:auto;width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:transparent}.pko.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 9%,var(--panel))}.pko.on .pi{background:var(--primary);color:#fff}.pko.on .pc{background:var(--primary);border-color:var(--primary);color:#fff}@media(max-width:480px){.pk{grid-template-columns:1fr}}
 .tw{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
 .tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
 .tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
@@ -185,16 +186,16 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query, where, getDocs, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 /* ============ SETTINGS: paste YOUR Firebase web-app config here ============ */
 const firebaseConfig = {
-  apiKey: "AIzaSyA3q4vJofWBeMcXxrAd0ZXe_MClZLBk3vI",
-  authDomain: "meal-manager-85b66.firebaseapp.com",
-  projectId: "meal-manager-85b66",
-  storageBucket: "meal-manager-85b66.firebasestorage.app",
-  messagingSenderId: "336695996080",
-  appId: "1:336695996080:web:3c9b8ba6592398d4441575"
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_PROJECT_ID.firebasestorage.app",
+  messagingSenderId: "PASTE",
+  appId: "PASTE"
 };
 const fb = initializeApp(firebaseConfig), auth = getAuth(fb), db = getFirestore(fb);
 
@@ -421,29 +422,53 @@ function tabAccount() {
   $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(user.uid); $('#cp').textContent = p('Copied', 'কপি হয়েছে'); } catch (e) {} };
 }
 
+const pkOpt = (v, t, s, ic, on) => '<button type="button" class="pko' + (on ? ' on' : '') + '" data-pk="' + v + '" role="radio" aria-checked="' + on + '"><span class="pi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg></span><span><span class="pt">' + esc(t) + '</span><span class="ps">' + esc(s) + '</span></span><span class="pc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span></button>';
 function tabPdf() {
   const d0 = (mdate && mdate.slice(0, 7) === month) ? mdate : month + '-01';
-  app.innerHTML = head(tt('pdf')) + '<div class="card"><h3 style="margin-top:0">' + p('Download PDF', 'PDF ডাউনলোড') + '</h3><div class="frm"><div class="fg" style="margin:0"><label>' + p('Report type', 'রিপোর্টের ধরন') + '</label><select id="pk"><option value="month">' + p('Month wise (full month)', 'মাসভিত্তিক (পুরো মাস)') + '</option><option value="day">' + p('Day wise (one day)', 'দিনভিত্তিক (একদিন)') + '</option></select></div>'
-    + '<div class="fg" style="margin:0;display:none" id="pdw"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="pd" value="' + d0 + '" ' + dateAttr() + '></div></div>'
-    + '<p class="muted">' + p('Month wise: summary, day-wise meals, bazar details and other costs with totals, then a separate page for member-wise totals. Day wise: meals, bazar and costs of the chosen date.', 'মাসভিত্তিক: সারসংক্ষেপ, দিনভিত্তিক মিল, বাজারের বিবরণ ও অন্যান্য খরচ (মোটসহ), এবং আলাদা পাতায় সদস্যভিত্তিক মোট হিসাব। দিনভিত্তিক: নির্বাচিত তারিখের মিল, বাজার ও খরচ।') + '</p><button class="btn btn-primary" data-a="pdf">' + p('Download PDF', 'PDF ডাউনলোড') + '</button></div>';
-  $('#pk').onchange = () => { $('#pdw').style.display = $('#pk').value === 'day' ? '' : 'none'; };
+  app.innerHTML = head(tt('pdf')) + '<div class="card"><h3 style="margin-top:0">' + p('Download PDF', 'PDF ডাউনলোড') + '</h3><div class="fg" style="margin:0 0 12px"><label>' + p('Report type', 'রিপোর্টের ধরন') + '</label><div class="pk" role="radiogroup">'
+    + pkOpt('month', p('Month wise', 'মাসভিত্তিক'), p('Full month: ', 'পুরো মাস: ') + monthLabel(month), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h8M8 18h8"/>', true)
+    + pkOpt('day', p('Day wise', 'দিনভিত্তিক'), p('Pick one date', 'একটি তারিখ বেছে নিন'), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/>', false)
+    + '</div><input type="hidden" id="pk" value="month"></div>'
+    + '<div class="fg" style="margin:0 0 12px;display:none;max-width:260px" id="pdw"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="pd" value="' + d0 + '" ' + dateAttr() + '></div>'
+    + '<p class="muted">' + p('Month wise: summary, day-wise meals, bazar details and other costs with totals, then a separate page for member-wise totals. Day wise: meals, bazar and costs of the chosen date.', 'মাসভিত্তিক: সারসংক্ষেপ, দিনভিত্তিক মিল, বাজারের বিবরণ ও অন্যান্য খরচ (মোটসহ), এবং আলাদা পাতায় সদস্যভিত্তিক মোট হিসাব। দিনভিত্তিক: নির্বাচিত তারিখের মিল, বাজার ও খরচ।') + '</p><button class="btn btn-primary" data-a="pdf">' + p('Download PDF', 'PDF ডাউনলোড') + '</button></div>'
+    + '<div class="card"><h3 style="margin-top:0">' + p('Online reports (QR links)', 'অনলাইন রিপোর্ট (QR লিংক)') + '</h3><p class="muted">' + p('Every PDF you download is also saved online. Open or copy its link here.', 'প্রতিটি PDF ডাউনলোডের সাথে রিপোর্টটি অনলাইনেও সেভ হয়। এখান থেকে লিংক খুলুন বা কপি করুন।') + '</p><div id="rl"><p class="muted">' + p('Loading...', 'লোড হচ্ছে...') + '</p></div></div>';
+  app.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => {
+    const v = b.dataset.pk; $('#pk').value = v;
+    app.querySelectorAll('[data-pk]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on ? 'true' : 'false'); });
+    $('#pdw').style.display = v === 'day' ? '' : 'none';
+  });
+  loadReports();
+}
+async function loadReports() {
+  const box = $('#rl'); if (!box) return;
+  try {
+    const q = isAdmin ? query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(15)) : query(collection(db, 'reports'), where('by', '==', user.uid), limit(15));
+    const rows = (await getDocs(q)).docs.map(d => Object.assign({ key: d.id }, d.data()));
+    rows.sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
+    if (!$('#rl')) return;
+    const base = viewBase();
+    box.innerHTML = rows.length ? '<div class="tw"><table class="tbl"><thead><tr><th>' + p('Report no.', 'রিপোর্ট নং') + '</th><th>' + p('Created', 'তৈরির সময়') + '</th><th>' + p('Link', 'লিংক') + '</th></tr></thead><tbody>'
+      + rows.map(x => { const u = base ? base + '?r=' + x.key : ''; return '<tr><td>' + esc(x.rid || x.key) + '</td><td>' + esc(x.genT || '') + '</td><td>' + (u ? '<a class="btn btn-sm" href="' + esc(u) + '" target="_blank" rel="noopener">' + p('Open', 'খুলুন') + '</a> <button class="btn btn-sm" data-cp="' + esc(u) + '">' + p('Copy link', 'লিংক কপি') + '</button>' : '-') + '</td></tr>'; }).join('')
+      + '</tbody></table></div>' : '<p class="muted">' + p('No online reports yet. Download a PDF to create one.', 'এখনো কোনো অনলাইন রিপোর্ট নেই। PDF ডাউনলোড করলে তৈরি হবে।') + '</p>';
+    box.querySelectorAll('[data-cp]').forEach(b => b.onclick = async () => { const o = b.textContent; try { await navigator.clipboard.writeText(b.dataset.cp); b.textContent = p('Copied', 'কপি হয়েছে'); } catch (e) { prompt(p('Copy this link:', 'এই লিংকটি কপি করুন:'), b.dataset.cp); } setTimeout(() => { b.textContent = o; }, 1500); });
+  } catch (e) {
+    if ($('#rl')) $('#rl').innerHTML = '<p class="muted">' + (e && e.code === 'permission-denied' ? p('Publish the updated Firestore rules to see saved reports here.', 'এখানে সেভ করা রিপোর্ট দেখতে আপডেট করা Firestore Rules Publish করুন।') : esc(emsg(e))) + '</p>';
+  }
 }
 /* ============ PDF ============ */
 const loadJs = s => new Promise((res, rej) => { const e = document.createElement('script'); e.src = s; e.onload = res; e.onerror = () => rej(new Error('Could not load ' + s)); document.head.appendChild(e); });
-const RCSS = '.rp{width:794px;height:1123px;position:relative;background:#fff;color:#1f2a37;font-family:"Noto Sans Bengali",Arial,sans-serif;font-size:15px;line-height:1.55;overflow:hidden}.rp *{box-sizing:border-box;margin:0;padding:0}'
-  + '.rh{position:absolute;left:0;right:0;top:0;height:100px;background:#14304f;color:#fff;padding:0 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:5px solid #c9a227}.rh .l small{display:block;font-size:13px;color:#b9c7d9;font-weight:600}.rp.en .rh .l small{letter-spacing:2px;text-transform:uppercase}.rh .l b{display:block;font-size:27px;font-weight:700;line-height:1.35}'
-  + '.rh .r{text-align:right;font-size:13px;line-height:1.65;color:#d5deea}.rh .r b{display:block;font-size:18px;color:#fff;line-height:1.4}'
-  + '.rb{position:absolute;left:40px;right:40px;top:122px;bottom:130px;overflow:hidden}'
-  + '.rf{position:absolute;left:40px;right:40px;bottom:14px;height:108px;border-top:2px solid #14304f;display:flex;align-items:center;gap:16px;font-size:12.5px;color:#5b6b7d;padding-top:6px}.rf img{flex:none;image-rendering:pixelated;display:block}.rf .ft{flex:1;line-height:1.55}.rf .ft b{color:#14304f;font-size:13.5px}.rf .rt{text-align:right;line-height:1.6}.rf .rt b{color:#14304f}'
-  + '.sh{display:flex;align-items:center;gap:10px;margin:18px 0 9px;font-size:17px;font-weight:700;color:#14304f;padding-bottom:5px;border-bottom:2px solid #14304f}.sh span{background:#14304f;color:#fff;font-size:13px;padding:0 8px;border-radius:3px;line-height:1.7}.sh em{font-style:normal;font-weight:400;font-size:13px;color:#6b7a8d}'
-  + '.t{width:100%;border-collapse:collapse;font-size:14.5px;table-layout:fixed}.t th{background:#14304f;color:#fff;font-weight:700;font-size:13px;padding:7px 10px;text-align:left;border:1px solid #14304f;line-height:1.4}.t td{padding:7px 10px;border:1px solid #cfd8e3;vertical-align:middle;line-height:1.45;word-wrap:break-word}'
-  + '.t.dd tbody tr:nth-child(even) td{background:#f5f8fb}.t .r{text-align:right;white-space:nowrap}.t .c{text-align:center}.t td small{display:block;color:#6b7a8d;font-size:12px}.t td.emp{color:#6b7a8d;text-align:center;padding:14px}'
-  + '.t tr.tf td{background:#14304f!important;color:#fff;font-weight:700;border-color:#14304f;font-size:15px}.t.kt td.k{background:#eef2f7;font-weight:600;color:#44546a;font-size:13.5px}.t.kt td.v{font-weight:600;color:#1f2a37}'
-  + '.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.tile{background:#f3f6fa;border-top:4px solid #2f5d8c;padding:10px 14px}.tile small{display:block;color:#5b6b7d;font-size:13px;font-weight:600}.tile b{display:block;font-size:22px;color:#14304f;line-height:1.35}'
-  + '.cp{display:inline-block;background:#eef2f7;border:1px solid #dde4ed;border-radius:10px;padding:0 8px;margin:2px 4px 2px 0;font-size:13px;white-space:nowrap}.cp b{color:#14304f;margin-left:5px}.pb{height:9px;background:#e3e9f0;border-radius:5px;overflow:hidden}.pb i{display:block;height:100%;background:#2f5d8c}.bp{color:#1b6e3c;font-weight:700}.bn{color:#a61e1e;font-weight:700}'
-  + '.note{margin-top:14px;font-size:13px;color:#5b6b7d;line-height:1.65}'
-  + '.vf{border:1px solid #d5dde8;border-left:5px solid #14304f;padding:12px 16px;margin-top:16px;background:#fafbfd}.vf b{color:#14304f;font-size:15px}.vf p{color:#5b6b7d;font-size:13px;margin-top:3px}'
-  + '.sg{display:flex;gap:30px;margin-top:46px}.sg div{flex:1;border-top:1px solid #1f2a37;padding-top:4px;text-align:center;font-size:13.5px;font-weight:600;color:#14304f}';
+const RCSS = '.rp{width:794px;height:1123px;position:relative;background:#fff;color:#111827;font-family:"Noto Sans Bengali",Arial,sans-serif;font-size:15px;line-height:1.55;overflow:hidden}.rp *{box-sizing:border-box;margin:0;padding:0}'
+  + '.rh{position:absolute;left:40px;right:40px;top:30px;height:78px;color:#111827;display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:10px;border-bottom:2px solid #111827}.rh .l small{display:block;font-size:13px;color:#6b7280;font-weight:600}.rp.en .rh .l small{letter-spacing:1.5px;text-transform:uppercase}.rh .l b{display:block;font-size:25px;font-weight:700;line-height:1.35}'
+  + '.rh .r{text-align:right;font-size:13px;line-height:1.65;color:#6b7280}.rh .r b{display:block;font-size:16px;color:#111827;line-height:1.4}'
+  + '.rb{position:absolute;left:40px;right:40px;top:126px;bottom:116px;overflow:hidden}'
+  + '.rf{position:absolute;left:40px;right:40px;bottom:22px;height:84px;border-top:1px solid #d1d5db;display:flex;align-items:center;gap:14px;font-size:12.5px;color:#4b5563;padding-top:6px}.rf img{flex:none;image-rendering:pixelated;display:block}.rf .ft{flex:1;line-height:1.5}.rf .rt{text-align:right;color:#6b7280}'
+  + '.sh{display:flex;align-items:baseline;gap:8px;margin:18px 0 9px;font-size:16px;font-weight:700;color:#111827;padding-bottom:4px;border-bottom:1px solid #111827}.sh span{color:#6b7280;font-size:13px;font-weight:600}.sh em{font-style:normal;font-weight:400;font-size:13px;color:#6b7280}'
+  + '.t{width:100%;border-collapse:collapse;font-size:14.5px;table-layout:fixed}.t th{background:#f3f4f6;color:#111827;font-weight:700;font-size:13px;padding:7px 10px;text-align:left;border:1px solid #d1d5db;line-height:1.4}.t td{padding:7px 10px;border:1px solid #e5e7eb;vertical-align:middle;line-height:1.45;word-wrap:break-word}'
+  + '.t.dd tbody tr:nth-child(even) td{background:#fafafa}.t .r{text-align:right;white-space:nowrap}.t .c{text-align:center}.t td small{display:block;color:#6b7280;font-size:12px}.t td.emp{color:#6b7280;text-align:center;padding:14px}'
+  + '.t tr.tf td{background:#f3f4f6!important;color:#111827;font-weight:700;border-color:#d1d5db;border-top:2px solid #111827;font-size:15px}.t.kt td.k{background:#f9fafb;font-weight:600;color:#4b5563;font-size:13.5px}.t.kt td.v{font-weight:600;color:#111827}'
+  + '.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.tile{background:#fff;border:1px solid #d1d5db;padding:10px 14px}.tile small{display:block;color:#6b7280;font-size:13px;font-weight:600}.tile b{display:block;font-size:21px;color:#111827;line-height:1.35}'
+  + '.cp{display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:10px;padding:0 8px;margin:2px 4px 2px 0;font-size:13px;white-space:nowrap}.cp b{color:#111827;margin-left:5px}.pb{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.pb i{display:block;height:100%;background:#4b5563}.bp,.bn{color:#111827;font-weight:700}'
+  + '.note{margin-top:14px;font-size:13px;color:#6b7280;line-height:1.65}';
 const monthLabel = m => { const a = m.split('-'); return new Date(+a[0], +a[1] - 1, 1).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long', year: 'numeric' }); };
 
 const kvT = its => { let h = '<table class="t kt"><colgroup><col style="width:21%"><col style="width:29%"><col style="width:21%"><col style="width:29%"></colgroup>'; for (let i = 0; i < its.length; i += 2) { const a = its[i], c = its[i + 1]; h += '<tr><td class="k">' + esc(a[0]) + '</td><td class="v">' + esc(a[1]) + '</td>' + (c ? '<td class="k">' + esc(c[0]) + '</td><td class="v">' + esc(c[1]) + '</td>' : '<td class="k"></td><td class="v"></td>') + '</tr>'; } return h + '</table>'; };
@@ -471,7 +496,7 @@ async function makePdf(title, items, file, period, meta) {
   const el = (cls, html) => { const d = document.createElement('div'); if (cls) d.className = cls; if (html != null) d.innerHTML = html; return d; };
   const newPage = () => {
     const pg = el('rp' + (lang === 'en' ? ' en' : ''), '<div class="rh"><div class="l"><small>' + p('Meal Manager', 'মিল ম্যানেজার') + '</small><b>' + esc(title) + '</b></div><div class="r"><b>' + esc(period || '') + '</b>' + esc(meta.id || '') + '<br>' + p('Generated', 'তৈরির তারিখ') + ': ' + gen + '</div></div><div class="rb"></div>'
-      + '<div class="rf">' + (qr ? '<img src="' + qr.src + '" style="width:' + qr.w + 'px;height:' + qr.w + 'px">' : '') + '<div class="ft"><b>' + (meta.online ? p('Scan to view online', 'অনলাইনে দেখতে স্ক্যান করুন') : p('Scan to verify', 'যাচাইয়ের জন্য স্ক্যান করুন')) + '</b><br>' + (meta.online ? p('The QR code opens this report on the website.', 'কিউআর কোড স্ক্যান করলে ওয়েবসাইটে এই রিপোর্ট দেখা যাবে।') : p('The QR code holds the key figures of this report as plain text.', 'কিউআর কোডে এই রিপোর্টের মূল হিসাব লেখা আকারে আছে।')) + '<br>' + p('Document ID', 'ডকুমেন্ট নং') + ': <b>' + esc(meta.id || '') + '</b></div><div class="rt">Developed by <b>Farhan Tanzid Shiyam</b><br><span class="pn"></span></div></div>');
+      + '<div class="rf">' + (qr ? '<img src="' + qr.src + '" style="width:' + qr.w + 'px;height:' + qr.w + 'px">' : '') + '<div class="ft">' + p('System generated document. Scan the QR code to verify.', 'সিস্টেম জেনারেটেড ডকুমেন্ট। যাচাই করতে QR কোড স্ক্যান করুন।') + '</div><div class="rt"><span class="pn"></span></div></div>');
     root.appendChild(pg); pages.push(pg); body = pg.querySelector('.rb'); return body;
   };
   const over = () => body.scrollHeight > body.clientHeight + 1;
@@ -483,10 +508,7 @@ async function makePdf(title, items, file, period, meta) {
     if (b.type === 'pagebreak') { newPage(); return; }
     if (b.type === 'info') { place(el('', kvT(b.items))); return; }
     if (b.type === 'note') { place(el('note', esc(b.text))); return; }
-    if (b.type === 'verify') {
-      place(el('', '<div class="vf"><b>' + p('Document verification', 'ডকুমেন্ট যাচাই') + '</b><p>' + (meta.online ? p('Scan the QR code in the footer of any page to open this report online.', 'যেকোনো পাতার নিচের কিউআর কোড স্ক্যান করলে ওয়েবসাইটে এই রিপোর্ট দেখা যাবে।') : p('Scan the QR code in the footer of any page to read the key figures of this report as plain text.', 'যেকোনো পাতার নিচের কিউআর কোড স্ক্যান করলে এই রিপোর্টের মূল হিসাব লেখা আকারে দেখা যাবে।')) + '</p><p>' + p('Document ID', 'ডকুমেন্ট নং') + ': <b>' + esc(meta.id || '') + '</b></p></div><div class="sg">' + b.sign.map(l => '<div>' + esc(l) + '</div>').join('') + '</div>'));
-      return;
-    }
+    if (b.type === 'verify') return;
     const n = ++num;
     if (b.type === 'tiles' || b.type === 'kv') {
       const w = el(''); w.appendChild(head(b.title, n));
@@ -527,7 +549,7 @@ async function makePdf(title, items, file, period, meta) {
   } finally { root.remove(); }
 }
 
-const viewBase = () => /^https?:$/.test(location.protocol) ? location.origin + (lastSeg in TABS ? pathBase : location.pathname) : '';
+const viewBase = () => { if (!/^https?:$/.test(location.protocol)) return ''; const seg = location.pathname.split('/').filter(Boolean).pop() || ''; return location.origin + (seg in TABS ? pathBase : location.pathname); };
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => (b % 36).toString(36)).join('');
 const headH = (t, n) => '<div class="sh">' + (n ? '<span>' + pad(n) + '</span>' : '') + esc(t) + '</div>';
 const tblH = b => {
@@ -553,7 +575,6 @@ function buildReport(kind, d, genT) {
   const bazarRows = list => list.slice().sort(byDate).map((x, i) => [String(i + 1), esc(fd(x.date)), esc(x.note || '-'), esc(nameOf(x.uid)), tk(x.amount)]);
   const costRows = list => list.slice().sort(byDate).map((x, i) => [String(i + 1), esc(fd(x.date)), esc(x.note || '-'), tk(x.amount)]);
   const info = (type, per, id) => ({ type: 'info', items: [[p('Report type', 'রিপোর্টের ধরন'), type], [p('Period', 'সময়কাল'), per], [p('Document ID', 'ডকুমেন্ট নং'), id], [p('Generated on', 'তৈরির সময়'), genT], [p('Prepared by', 'প্রস্তুতকারক'), (me && me.name) || (user && user.email) || ''], [p('Active members', 'সক্রিয় সদস্য'), String(ms.length)]] });
-  const verify = { type: 'verify', sign: [p('Prepared by', 'প্রস্তুতকারক'), p('Checked by', 'যাচাইকারী'), p('Approved by', 'অনুমোদনকারী')] };
 
   if (kind === 'day') {
     const ml = S.meals.filter(x => x.date === d), bz = S.bazar.filter(x => x.date === d), oc = S.costs.filter(x => x.date === d);
@@ -565,7 +586,6 @@ function buildReport(kind, d, genT) {
       rows: ms.map((m, i) => [String(i + 1), '<b>' + esc(m.name) + '</b>', '<div class="pb"><i style="width:' + (tm ? Math.round(per[i] / tm * 100) : 0) + '%"></i></div>', per[i] ? money(per[i]) : '-']), foot: [p('Total meals', 'মোট মিল'), money(tm)] });
     items.push({ type: 'list', title: p('Bazar details', 'বাজারের বিবরণ'), empty: p('No bazar on this day', 'এই দিনে কোনো বাজার নেই'), cols: bazarCols, rows: bazarRows(bz), foot: bz.length ? [p('Total bazar', 'মোট বাজার'), tk(sum(bz, x => x.amount))] : null });
     items.push({ type: 'list', title: p('Other costs', 'অন্যান্য খরচ'), empty: p('No other costs on this day', 'এই দিনে কোনো খরচ নেই'), cols: costCols, rows: costRows(oc), foot: oc.length ? [p('Total other costs', 'মোট অন্যান্য খরচ'), tk(sum(oc, x => x.amount))] : null });
-    items.push(verify);
     return { items, id, title: p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), period: fd(d), file: 'Meal-day-' + d + '.pdf',
       facts: ['MEAL MANAGER - DAY', 'ID: ' + id, 'Date: ' + d, 'Meals: ' + fx(tm), 'Bazar: ' + fx(sum(bz, x => x.amount)), 'Other: ' + fx(sum(oc, x => x.amount))] };
   }
@@ -590,7 +610,6 @@ function buildReport(kind, d, genT) {
     full: c.rows.length ? ['', esc(p('Total', 'মোট')), money(c.totM), tk(sum(c.rows, r => r.cost)), tk(sum(c.rows, r => r.share)), tk(sum(c.rows, r => r.paid)), '', ''] : null });
   items.push({ type: 'tiles', title: p('Settlement summary', 'নিষ্পত্তির সারসংক্ষেপ'), items: [[p('Total to receive', 'মোট পাওনা'), tk(recv)], [p('Total to pay', 'মোট দেনা'), tk(pay)], [p('Total meals', 'মোট মিল'), money(c.totM)]] });
   items.push({ type: 'note', text: p('Meal rate = total bazar ÷ total meals. Meal cost = meals × meal rate. Balance = bazar paid − meal cost − other share. Receivable = gets back, Payable = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। মিল খরচ = মিল × মিল রেট। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। পাবেন = ফেরত পাবেন, দেবেন = দিতে হবে।') });
-  items.push(verify);
   return { items, id, title: p('Monthly report', 'মাসিক রিপোর্ট'), period: monthLabel(month), file: 'Meal-month-' + month + '.pdf',
     facts: ['MEAL MANAGER - MONTH', 'ID: ' + id, 'Period: ' + month, 'Bazar: ' + fx(c.bz), 'Meals: ' + fx(c.totM), 'Rate: ' + fx(c.rate), 'Other: ' + fx(c.oc), 'Members: ' + c.rows.length] };
 }
@@ -629,15 +648,16 @@ async function exportPdf() {
     }
   }
   await makePdf(rep.title, rep.items, rep.file, rep.period, { id: rep.id, qrText, qrUrl: online, online });
+  loadReports();
   if (warn) alert(warn);
 }
 
 /* ============ public report page: opened by scanning the QR (?r=KEY), no login ============ */
 const VCSS = '.vwrap{max-width:900px;margin:0 auto}.vwrap .vt{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap}'
-  + '.rp.vw{width:auto;height:auto;overflow:hidden;padding:0 0 20px;border:1px solid #d5dde8;border-radius:10px}.vw .vh{background:#14304f;color:#fff;border-bottom:5px solid #c9a227;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}'
-  + '.vw .vh small{display:block;font-size:13px;color:#b9c7d9;font-weight:600}.vw .vh b{display:block;font-size:24px;line-height:1.35}.vw .vh .vr{text-align:right;font-size:13px;line-height:1.65;color:#d5deea}.vw .vh .vr b{font-size:17px;color:#fff}'
-  + '.vw .vb{margin:14px 20px 0;padding:8px 12px;background:#e3f3e8;color:#1b6e3c;border-radius:6px;font-size:13.5px}.vw .vc{padding:0 20px}.vw .sc{overflow-x:auto}.vw .t{min-width:600px}.vw .kt{min-width:0}'
-  + '@media(max-width:600px){.vw .tiles{grid-template-columns:1fr 1fr}.vw .vh .vr{text-align:left}.vw .vc{padding:0 12px}.vw .vb{margin:14px 12px 0}}';
+  + '.rp.vw{width:auto;height:auto;overflow:hidden;padding:0 0 20px;border:1px solid #d1d5db;border-radius:6px}.vw .vh{background:#fff;color:#111827;border-bottom:2px solid #111827;padding:18px 20px 12px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}'
+  + '.vw .vh small{display:block;font-size:13px;color:#6b7280;font-weight:600}.vw .vh b{display:block;font-size:22px;line-height:1.35}.vw .vh .vr{text-align:right;font-size:13px;line-height:1.65;color:#6b7280}.vw .vh .vr b{font-size:16px;color:#111827}'
+  + '.vw .vc{padding:0 20px}.vw .sc{overflow-x:auto}.vw .t{min-width:600px}.vw .kt{min-width:0}'
+  + '@media(max-width:600px){.vw .tiles{grid-template-columns:1fr 1fr}.vw .vh .vr{text-align:left}.vw .vc{padding:0 12px}}';
 async function showReport(key) {
   document.body.classList.remove('in'); $('#side').innerHTML = '';
   const msg = (h, t) => { app.innerHTML = '<div class="card center"><h2>' + esc(h) + '</h2><p class="muted">' + esc(t) + '</p></div>'; };
@@ -666,7 +686,7 @@ async function showReport(key) {
     const base = viewBase();
     app.innerHTML = '<div class="vwrap"><style>' + RCSS + VCSS + '</style><div class="vt"><button class="btn btn-sm" id="vl">' + (lang === 'bn' ? 'English' : 'বাংলা') + '</button>' + (base ? '<a class="btn btn-sm" href="' + esc(base) + '">' + p('Open Meal Manager', 'মিল ম্যানেজার খুলুন') + '</a>' : '') + '</div>'
       + '<div class="rp vw' + (lang === 'en' ? ' en' : '') + '"><div class="vh"><div><small>' + p('Meal Manager', 'মিল ম্যানেজার') + '</small><b>' + esc(rep.title) + '</b></div><div class="vr"><b>' + esc(rep.period) + '</b>' + esc(rep.id) + '<br>' + p('Generated', 'তৈরির সময়') + ': ' + esc(snap.genT || '') + '</div></div>'
-      + '<div class="vb">' + p('Online copy of this report, saved when the PDF was generated.', 'এই রিপোর্টের অনলাইন কপি, পিডিএফ তৈরির সময় সংরক্ষিত।') + '</div><div class="vc">' + body + '</div></div></div>';
+      + '<div class="vc">' + body + '</div></div></div>';
     document.title = rep.title + ' - Meal Manager'; $('#vl').onclick = () => { lang = lang === 'bn' ? 'en' : 'bn'; draw(); };
   };
   draw();
