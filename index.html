@@ -62,12 +62,14 @@ body.open .side{width:250px}body.open.in{padding-left:250px}
 .sb-f{padding:8px 10px 14px;border-top:1px solid var(--border)}
 body:not(.open) .nav span,body:not(.open) .sb-t,body:not(.open) .sb-u{display:none}
 body:not(.open) .nav{justify-content:center;padding:10px 0}
-@media print{.side,.bar .no,.frm,.btn{display:none!important}body.in{padding-left:0}}
+.app-foot{text-align:center;color:var(--muted);font-size:12.5px;padding:14px 12px 22px;border-top:1px solid var(--border);margin:0 18px}
+.app-foot b{color:var(--primary)}
 </style>
 </head>
 <body>
 <aside class="side" id="side"></aside>
 <main class="wrap" id="app"><div class="card center" style="text-align:center"><span class="spin"></span></div></main>
+<footer class="app-foot">Developed by <b>Farhan Tanzid Shiyam</b></footer>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -76,12 +78,12 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query
 
 /* ============ SETTINGS: paste YOUR Firebase web-app config here ============ */
 const firebaseConfig = {
-  apiKey: "AIzaSyA3q4vJofWBeMcXxrAd0ZXe_MClZLBk3vI",
-  authDomain: "meal-manager-85b66.firebaseapp.com",
-  projectId: "meal-manager-85b66",
-  storageBucket: "meal-manager-85b66.firebasestorage.app",
-  messagingSenderId: "336695996080",
-  appId: "1:336695996080:web:3c9b8ba6592398d4441575"
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_PROJECT_ID.firebasestorage.app",
+  messagingSenderId: "PASTE",
+  appId: "PASTE"
 };
 const fb = initializeApp(firebaseConfig), auth = getAuth(fb), db = getFirestore(fb);
 
@@ -97,7 +99,7 @@ const nowM = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.
 const nowD = () => nowM() + '-' + pad(new Date().getDate());
 
 let user = null, isAdmin = false, me = null, tab = 'dash', month = nowM(), mdate = nowD(), pendingName = '';
-let S = { members: [], meals: [], bazar: [], deposits: [], costs: [] };
+let S = { members: [], meals: [], bazar: [], costs: [] };
 
 const ICON = {
   dash: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -112,8 +114,14 @@ const ICON = {
   out: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
 };
 const ico = k => '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICON[k] + '</svg>';
-const TABS = { dash: ['Dashboard', 'ড্যাশবোর্ড'], meals: ['Meals', 'মিল'], bazar: ['Bazar', 'বাজার'], deposits: ['Deposits', 'জমা'], costs: ['Other costs', 'অন্যান্য খরচ'], members: ['Members', 'সদস্য'], account: ['Account', 'অ্যাকাউন্ট'] };
+const TABS = { dash: ['Dashboard', 'ড্যাশবোর্ড'], meals: ['Meals', 'মিল'], bazar: ['Bazar', 'বাজার'], costs: ['Other costs', 'অন্যান্য খরচ'], members: ['Members', 'সদস্য'], account: ['Account', 'অ্যাকাউন্ট'] };
 const tt = k => p(TABS[k][0], TABS[k][1]);
+/* clean URLs: /app/ , /app/meals ... (no # or ?). Needs 404.html beside index.html on static hosts */
+const lastSeg = location.pathname.split('/').filter(Boolean).pop() || '';
+const okRoute = /^https?:$/.test(location.protocol) && (/\/$/.test(location.pathname) || /index\.html$/.test(location.pathname) || (lastSeg in TABS));
+const pathBase = (() => { let q = location.pathname.replace(/index\.html$/, ''); if (lastSeg in TABS) q = q.replace(new RegExp(lastSeg + '/?$'), ''); return q.endsWith('/') ? q : q + '/'; })();
+const tabUrl = k => okRoute ? pathBase + (k === 'dash' ? '' : k) : 'javascript:void(0)';
+const setUrl = () => { if (okRoute) { try { history.replaceState(null, '', tabUrl(tab)); } catch (e) {} } };
 const setMsg = (id, m, ok) => { const e = $('#' + id); if (e) { e.textContent = m || ''; e.className = 'msg' + (ok ? ' ok' : ''); } };
 const fg = (id, l, type, extra) => '<div class="fg"><label for="' + id + '">' + esc(l) + '</label><input id="' + id + '" type="' + type + '" ' + (extra || '') + '></div>';
 
@@ -154,18 +162,19 @@ const mref = () => doc(db, 'members', user.uid);
 async function load() {
   const q = c => getDocs(query(collection(db, c), where('month', '==', month))).then(s => s.docs.map(d => Object.assign({ id: d.id }, d.data())));
   const ms = await getDocs(collection(db, 'members')); S.members = ms.docs.map(d => Object.assign({ id: d.id }, d.data()));
-  [S.meals, S.bazar, S.deposits, S.costs] = await Promise.all(['meals', 'bazar', 'deposits', 'costs'].map(q));
+  [S.meals, S.bazar, S.costs] = await Promise.all(['meals', 'bazar', 'costs'].map(q));
 }
 const actives = () => S.members.filter(m => m.status === 'active').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 const nameOf = id => { const m = S.members.find(x => x.id === id); return m ? m.name : '?'; };
+const mv = x => x.n != null ? (+x.n || 0) : (+x.b || 0) + (+x.l || 0) + (+x.d || 0);
 function calc() {
-  const ms = actives(), meals = {}, dep = {}; ms.forEach(m => { meals[m.id] = 0; dep[m.id] = 0; });
-  S.meals.forEach(x => { if (x.uid in meals) meals[x.uid] += (+x.b || 0) + (+x.l || 0) + (+x.d || 0); });
-  S.deposits.forEach(x => { if (x.uid in dep) dep[x.uid] += +x.amount || 0; });
+  const ms = actives(), meals = {}, paid = {}; ms.forEach(m => { meals[m.id] = 0; paid[m.id] = 0; });
+  S.meals.forEach(x => { if (x.uid in meals) meals[x.uid] += mv(x); });
+  S.bazar.forEach(x => { if (x.uid in paid) paid[x.uid] += +x.amount || 0; });
   const totM = sum(Object.values(meals), v => v), bz = sum(S.bazar, x => x.amount), oc = sum(S.costs, x => x.amount);
   const rate = totM ? bz / totM : 0, share = ms.length ? oc / ms.length : 0;
-  const rows = ms.map(m => { const cost = meals[m.id] * rate; return { m, meals: meals[m.id], cost, dep: dep[m.id], share, bal: dep[m.id] - cost - share }; });
-  return { rows, totM, bz, oc, rate, share, dep: sum(rows, r => r.dep) };
+  const rows = ms.map(m => { const cost = meals[m.id] * rate; return { m, meals: meals[m.id], cost, paid: paid[m.id], share, bal: paid[m.id] - cost - share }; });
+  return { rows, totM, bz, oc, rate, share };
 }
 
 /* ============ shell ============ */
@@ -178,75 +187,77 @@ function renderSide() {
   const keys = Object.keys(TABS);
   $('#side').innerHTML = '<div class="sb-h"><button class="burger" data-a="menu" aria-label="Menu"><span></span><span></span><span></span></button><div class="sb-t">' + p('Meal Manager', 'মিল ম্যানেজার') + '</div></div>'
     + '<div class="sb-u" title="' + esc(user.email) + '">' + esc(me.name || user.email) + (isAdmin ? ' (' + p('Manager', 'ম্যানেজার') + ')' : '') + '</div><nav>'
-    + keys.map(k => '<a class="nav' + (tab === k ? ' on' : '') + '" href="#' + k + '" data-t="' + k + '">' + ico(k) + '<span>' + esc(tt(k)) + '</span></a>').join('') + '</nav><div class="sb-f">'
+    + keys.map(k => '<a class="nav' + (tab === k ? ' on' : '') + '" href="' + tabUrl(k) + '" data-t="' + k + '">' + ico(k) + '<span>' + esc(tt(k)) + '</span></a>').join('') + '</nav><div class="sb-f">'
     + '<button class="nav" data-a="theme">' + ico('theme') + '<span>' + p('Dark / Light', 'ডার্ক / লাইট') + '</span></button>'
     + '<button class="nav" data-a="lang">' + ico('lang') + '<span>' + (lang === 'bn' ? 'English' : 'বাংলা') + '</span></button>'
     + '<button class="nav danger" data-a="logout">' + ico('out') + '<span>' + p('Sign out', 'সাইন আউট') + '</span></button></div>';
-  $('#side').querySelectorAll('[data-t]').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; history.replaceState(null, '', '#' + tab); renderSide(); renderTab(); if (innerWidth < 721) { document.body.classList.remove('open'); } });
+  $('#side').querySelectorAll('[data-t]').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; setUrl(); renderSide(); renderTab(); if (innerWidth < 721) { document.body.classList.remove('open'); } });
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest && e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
   if (a === 'menu') { const o = !document.body.classList.contains('open'); document.body.classList.toggle('open', o); try { localStorage.setItem('mm_open', o ? '1' : '0'); } catch (x) {} }
   else if (a === 'lang') { lang = lang === 'bn' ? 'en' : 'bn'; try { localStorage.setItem('mm_lang', lang); } catch (x) {} if (me) { renderSide(); renderTab(); } else if (user) waitScreen(); else authScreen('in'); }
   else if (a === 'theme') { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', nx); try { localStorage.setItem('mm_theme', nx); } catch (x) {} }
+  else if (a === 'pdf') { const old = b.textContent; b.disabled = true; b.textContent = p('Preparing...', 'তৈরি হচ্ছে...'); try { await exportPdf(); } catch (x) { alert(p('PDF failed: ', 'PDF তৈরি হয়নি: ') + (x && x.message || x)); } b.disabled = false; b.textContent = old; }
   else if (a === 'logout') { try { await signOut(auth); } catch (x) {} }
 });
 function head(title, noMonth) {
-  return '<div class="bar"><h2>' + esc(title) + '</h2>' + (noMonth ? '' : '<div class="no"><input type="month" id="mo" value="' + month + '"> <button class="btn btn-sm" onclick="window.print()">' + p('Print', 'প্রিন্ট') + '</button></div>') + '</div>';
+  return '<div class="bar"><h2>' + esc(title) + '</h2>' + (noMonth ? '' : '<div class="no"><input type="month" id="mo" value="' + month + '"> <button class="btn btn-sm btn-primary" data-a="pdf">' + p('Download PDF', 'PDF ডাউনলোড') + '</button></div>') + '</div>';
 }
 function bindMonth() { const m = $('#mo'); if (m) m.onchange = async () => { if (!m.value) return; month = m.value; mdate = month === nowM() ? nowD() : month + '-01'; await refresh(); }; }
 function renderTab() {
-  ({ dash: tabDash, meals: tabMeals, bazar: () => tabList('bazar'), deposits: () => tabList('deposits'), costs: () => tabList('costs'), members: tabMembers, account: tabAccount })[tab]();
+  ({ dash: tabDash, meals: tabMeals, bazar: () => tabList('bazar'), costs: () => tabList('costs'), members: tabMembers, account: tabAccount })[tab]();
   bindMonth(); document.title = tt(tab) + ' - Meal Manager';
 }
 
 /* ============ tabs ============ */
 function tabDash() {
   const c = calc(), st = (l, v) => '<div class="stat"><small>' + esc(l) + '</small><b>' + esc(v) + '</b></div>';
-  app.innerHTML = head(tt('dash')) + '<div class="grid">' + st(p('Total bazar', 'মোট বাজার'), money(c.bz)) + st(p('Total meals', 'মোট মিল'), money(c.totM)) + st(p('Meal rate', 'মিল রেট'), money(c.rate)) + st(p('Total deposits', 'মোট জমা'), money(c.dep)) + st(p('Other costs', 'অন্যান্য খরচ'), money(c.oc)) + '</div>'
-    + '<div class="card"><h3 style="margin-top:0">' + p('Member summary', 'সদস্যভিত্তিক হিসাব') + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th class="n">' + p('Meals', 'মিল') + '</th><th class="n">' + p('Meal cost', 'মিল খরচ') + '</th><th class="n">' + p('Other share', 'অন্য খরচের ভাগ') + '</th><th class="n">' + p('Deposit', 'জমা') + '</th><th class="n">' + p('Balance', 'ব্যালেন্স') + '</th></tr></thead><tbody>'
-    + (c.rows.length ? c.rows.map(r => '<tr><td>' + esc(r.m.name) + '</td><td class="n">' + money(r.meals) + '</td><td class="n">' + money(r.cost) + '</td><td class="n">' + money(r.share) + '</td><td class="n">' + money(r.dep) + '</td><td class="n ' + (r.bal >= 0 ? 'pos' : 'neg') + '">' + money(r.bal) + '</td></tr>').join('') : '<tr><td colspan="6" class="muted">' + p('No active members yet.', 'এখনো কোনো সক্রিয় সদস্য নেই।') + '</td></tr>')
-    + '</tbody></table></div><p class="muted" style="margin-bottom:0">' + p('Meal rate = total bazar ÷ total meals. Balance = deposit − meal cost − other share. Positive = gets back, negative = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। ব্যালেন্স = জমা − মিল খরচ − অন্য খরচের ভাগ। ধনাত্মক = ফেরত পাবে, ঋণাত্মক = দিতে হবে।') + '</p></div>';
+  app.innerHTML = head(tt('dash')) + '<div class="grid">' + st(p('Total bazar', 'মোট বাজার'), money(c.bz)) + st(p('Total meals', 'মোট মিল'), money(c.totM)) + st(p('Meal rate', 'মিল রেট'), money(c.rate)) + st(p('Other costs', 'অন্যান্য খরচ'), money(c.oc)) + '</div>'
+    + '<div class="card"><h3 style="margin-top:0">' + p('Member summary', 'সদস্যভিত্তিক হিসাব') + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th class="n">' + p('Meals', 'মিল') + '</th><th class="n">' + p('Meal cost', 'মিল খরচ') + '</th><th class="n">' + p('Other share', 'অন্য খরচের ভাগ') + '</th><th class="n">' + p('Bazar paid', 'বাজার (খরচ করেছে)') + '</th><th class="n">' + p('Balance', 'ব্যালেন্স') + '</th></tr></thead><tbody>'
+    + (c.rows.length ? c.rows.map(r => '<tr><td>' + esc(r.m.name) + '</td><td class="n">' + money(r.meals) + '</td><td class="n">' + money(r.cost) + '</td><td class="n">' + money(r.share) + '</td><td class="n">' + money(r.paid) + '</td><td class="n ' + (r.bal >= 0 ? 'pos' : 'neg') + '">' + money(r.bal) + '</td></tr>').join('') : '<tr><td colspan="6" class="muted">' + p('No active members yet.', 'এখনো কোনো সক্রিয় সদস্য নেই।') + '</td></tr>')
+    + '</tbody></table></div><p class="muted" style="margin-bottom:0">' + p('Meal rate = total bazar ÷ total meals. Bazar money a member spends counts as their contribution. Balance = bazar paid − meal cost − other share. Positive = gets back, negative = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। যে সদস্য বাজার করেছেন, সেই টাকাই তার জমা হিসেবে ধরা হয়। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। ধনাত্মক = ফেরত পাবে, ঋণাত্মক = দিতে হবে।') + '</p></div>';
 }
 const dateAttr = () => 'min="' + month + '-01" max="' + month + '-31"';
 function tabMeals() {
   const ms = actives(); let h = head(tt('meals'));
   if (isAdmin) {
-    const cur = {}; S.meals.filter(x => x.date === mdate).forEach(x => cur[x.uid] = x);
-    const ni = (id, v) => '<input type="number" min="0" step="0.5" data-k="' + id + '" value="' + (v || 0) + '">';
-    h += '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="md" value="' + mdate + '" ' + dateAttr() + '></div></div><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th>' + p('Breakfast', 'সকাল') + '</th><th>' + p('Lunch', 'দুপুর') + '</th><th>' + p('Dinner', 'রাত') + '</th></tr></thead><tbody>'
-      + ms.map(m => { const c = cur[m.id] || {}; return '<tr data-u="' + m.id + '"><td>' + esc(m.name) + '</td><td>' + ni('b', c.b) + '</td><td>' + ni('l', c.l) + '</td><td>' + ni('d', c.d) + '</td></tr>'; }).join('')
-      + '</tbody></table></div><div class="msg" id="m"></div><button class="btn btn-primary" id="sv">' + p('Save meals for this day', 'এই দিনের মিল সেভ করুন') + '</button></div>';
+    const cur = {}; S.meals.filter(x => x.date === mdate).forEach(x => cur[x.uid] = (cur[x.uid] || 0) + mv(x));
+    h += '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="md" value="' + mdate + '" ' + dateAttr() + '></div></div><div class="tw"><table class="tbl"><thead><tr><th>' + p('Member', 'সদস্য') + '</th><th>' + p('Meals (whole day)', 'মিল (সারাদিনে মোট)') + '</th></tr></thead><tbody>'
+      + ms.map(m => '<tr data-u="' + m.id + '"><td>' + esc(m.name) + '</td><td><input type="number" min="0" step="0.5" inputmode="decimal" value="' + (cur[m.id] || 0) + '"></td></tr>').join('')
+      + '</tbody></table></div><p style="margin:10px 0 0"><b>' + p('Day total', 'আজকের মোট মিল') + ': <span id="dt">0</span></b></p><div class="msg" id="m"></div><button class="btn btn-primary" id="sv">' + p('Save meals for this day', 'এই দিনের মিল সেভ করুন') + '</button></div>';
   }
   const mine = isAdmin ? S.meals.slice() : S.meals.filter(x => x.uid === user.uid);
   mine.sort((a, b) => b.date.localeCompare(a.date));
-  h += '<div class="card"><h3 style="margin-top:0">' + (isAdmin ? p('All entries this month', 'এই মাসের সব এন্ট্রি') : p('My meals this month', 'এই মাসে আমার মিল')) + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (isAdmin ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th class="n">' + p('B', 'সকাল') + '</th><th class="n">' + p('L', 'দুপুর') + '</th><th class="n">' + p('D', 'রাত') + '</th><th class="n">' + p('Total', 'মোট') + '</th></tr></thead><tbody>'
-    + (mine.length ? mine.map(x => '<tr><td>' + esc(x.date) + '</td>' + (isAdmin ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td class="n">' + (+x.b || 0) + '</td><td class="n">' + (+x.l || 0) + '</td><td class="n">' + (+x.d || 0) + '</td><td class="n"><b>' + ((+x.b || 0) + (+x.l || 0) + (+x.d || 0)) + '</b></td></tr>').join('') : '<tr><td colspan="6" class="muted">' + p('No meals recorded.', 'কোনো মিল নেই।') + '</td></tr>') + '</tbody></table></div></div>';
+  h += '<div class="card"><h3 style="margin-top:0">' + (isAdmin ? p('All entries this month', 'এই মাসের সব এন্ট্রি') : p('My meals this month', 'এই মাসে আমার মিল')) + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (isAdmin ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th class="n">' + p('Meals', 'মিল') + '</th></tr></thead><tbody>'
+    + (mine.length ? mine.map(x => '<tr><td>' + esc(x.date) + '</td>' + (isAdmin ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td class="n"><b>' + money(mv(x)) + '</b></td></tr>').join('') : '<tr><td colspan="3" class="muted">' + p('No meals recorded.', 'কোনো মিল নেই।') + '</td></tr>') + '</tbody></table></div></div>';
   app.innerHTML = h;
   if (!isAdmin) return;
+  const upd = () => { let t = 0; app.querySelectorAll('tr[data-u] input').forEach(i => t += Math.max(0, +i.value || 0)); $('#dt').textContent = money(t); };
+  app.querySelectorAll('tr[data-u] input').forEach(i => i.oninput = upd); upd();
   $('#md').onchange = e => { if (e.target.value) { mdate = e.target.value; tabMeals(); bindMonth(); } };
   $('#sv').onclick = async () => {
     $('#sv').disabled = true;
     try {
       const wb = writeBatch(db);
       app.querySelectorAll('tr[data-u]').forEach(tr => {
-        const u = tr.dataset.u, v = {}; tr.querySelectorAll('input').forEach(i => v[i.dataset.k] = Math.max(0, +i.value || 0));
+        const u = tr.dataset.u, n = Math.max(0, +tr.querySelector('input').value || 0);
         const ref = doc(db, 'meals', mdate + '_' + u);
-        if (v.b + v.l + v.d === 0) wb.delete(ref); else wb.set(ref, { date: mdate, month: mdate.slice(0, 7), uid: u, b: v.b, l: v.l, d: v.d });
+        if (n === 0) wb.delete(ref); else wb.set(ref, { date: mdate, month: mdate.slice(0, 7), uid: u, n });
       });
       await wb.commit(); await load(); tabMeals(); bindMonth(); setMsg('m', p('Saved.', 'সেভ হয়েছে।'), 1);
     } catch (e) { $('#sv').disabled = false; setMsg('m', emsg(e)); }
   };
 }
-const KIND = { bazar: { who: 1, note: ['Item / note', 'কী কেনা হয়েছে'] }, deposits: { who: 1, note: ['Note (optional)', 'মন্তব্য (ঐচ্ছিক)'] }, costs: { who: 0, note: ['Title (rent, gas, wifi...)', 'খাত (ভাড়া, গ্যাস, ওয়াইফাই...)'] } };
+const KIND = { bazar: { who: 1, note: ['Item / note', 'কী কেনা হয়েছে'] }, costs: { who: 0, note: ['Title (rent, gas, wifi...)', 'খাত (ভাড়া, গ্যাস, ওয়াইফাই...)'] } };
 function tabList(k) {
   const K = KIND[k], rows = S[k].slice().sort((a, b) => b.date.localeCompare(a.date)), tot = sum(rows, x => x.amount), ms = actives();
   const dd = month === nowM() ? nowD() : month + '-01';
   app.innerHTML = head(tt(k))
     + (isAdmin ? '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="fD" value="' + dd + '" ' + dateAttr() + '></div>'
-      + (K.who ? '<div class="fg" style="margin:0"><label>' + p('Member', 'সদস্য') + '</label><select id="fW">' + ms.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('') + '</select></div>' : '')
-      + '<div class="fg" style="margin:0"><label>' + p('Amount', 'টাকা') + '</label><input type="number" id="fA" min="0" step="any"></div><div class="fg" style="margin:0"><label>' + p(K.note[0], K.note[1]) + '</label><input type="text" id="fN"></div><button class="btn btn-primary" id="ad">' + p('Add', 'যোগ করুন') + '</button></div><div class="msg" id="m"></div></div>' : '')
-    + '<div class="card"><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (K.who ? '<th>' + p('Member', 'সদস্য') + '</th>' : '') + '<th>' + p('Note', 'বিবরণ') + '</th><th class="n">' + p('Amount', 'টাকা') + '</th>' + (isAdmin ? '<th class="no"></th>' : '') + '</tr></thead><tbody>'
+      + (K.who ? '<div class="fg" style="margin:0"><label>' + p('Bought by', 'কে বাজার করেছেন') + '</label><select id="fW">' + ms.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('') + '</select></div>' : '')
+      + '<div class="fg" style="margin:0"><label>' + p('Amount', 'টাকা') + '</label><input type="number" id="fA" min="0" step="any"></div><div class="fg" style="margin:0"><label>' + p(K.note[0], K.note[1]) + '</label><input type="text" id="fN"></div><button class="btn btn-primary" id="ad">' + p('Add', 'যোগ করুন') + '</button></div><div class="msg" id="m"></div>' + (k === 'bazar' ? '<p class="muted" style="margin:0">' + p('The amount is counted as this member\'s contribution.', 'এই টাকা যিনি বাজার করেছেন তার জমা হিসেবে ধরা হবে।') + '</p>' : '') + '</div>' : '')
+    + '<div class="card"><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (K.who ? '<th>' + p('Bought by', 'কে বাজার করেছেন') + '</th>' : '') + '<th>' + p('Note', 'বিবরণ') + '</th><th class="n">' + p('Amount', 'টাকা') + '</th>' + (isAdmin ? '<th class="no"></th>' : '') + '</tr></thead><tbody>'
     + (rows.length ? rows.map(x => '<tr><td>' + esc(x.date) + '</td>' + (K.who ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td>' + esc(x.note || '') + '</td><td class="n">' + money(x.amount) + '</td>' + (isAdmin ? '<td class="n no"><button class="btn btn-sm btn-danger" data-del="' + x.id + '">' + p('Delete', 'মুছুন') + '</button></td>' : '') + '</tr>').join('') : '<tr><td colspan="5" class="muted">' + p('Nothing yet.', 'এখনো কিছু নেই।') + '</td></tr>')
     + '</tbody></table></div><p style="margin:10px 0 0"><b>' + p('Total', 'মোট') + ': ' + money(tot) + '</b></p></div>';
   if (!isAdmin) return;
@@ -276,6 +287,86 @@ function tabAccount() {
   $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(user.uid); $('#cp').textContent = p('Copied', 'কপি হয়েছে'); } catch (e) {} };
 }
 
+/* ============ PDF ============ */
+const loadJs = s => new Promise((res, rej) => { const e = document.createElement('script'); e.src = s; e.onload = res; e.onerror = () => rej(new Error('Could not load ' + s)); document.head.appendChild(e); });
+const RCSS = '.rp{width:794px;height:1123px;position:relative;background:#fff;color:#1b2430;font-family:"Noto Sans Bengali",Arial,sans-serif;font-size:13px;line-height:1.5;overflow:hidden;box-sizing:border-box}.rp *{box-sizing:border-box}'
+  + '.rh{position:absolute;left:40px;right:40px;top:30px;height:82px;border-bottom:3px solid #c9a227;display:flex;justify-content:space-between;align-items:flex-start}.rh .a b{display:block;font-size:23px;color:#1f4e79;line-height:1.35}.rh .a span{font-size:15px;font-weight:600}.rh .c{text-align:right;font-size:12px;color:#5d6b7a;line-height:1.6}.rh .c b{font-size:14px;color:#1b2430}'
+  + '.rb{position:absolute;left:40px;right:40px;top:128px;bottom:80px;overflow:hidden}.rf{position:absolute;left:40px;right:40px;bottom:26px;height:36px;border-top:1px solid #c8d0da;display:flex;justify-content:space-between;align-items:flex-end;font-size:11.5px;color:#5d6b7a}.rf b{color:#1f4e79}'
+  + '.rb h3{margin:14px 0 6px;font-size:14px;color:#1f4e79}.rb table{width:100%;border-collapse:collapse;font-size:12.5px}.rb th{background:#1f4e79;color:#fff;padding:6px 8px;text-align:left;font-weight:600}.rb td{padding:5px 8px;border-bottom:1px solid #dde3ea}.rb tr:nth-child(even) td{background:#f5f7fa}.rb .n{text-align:right}'
+  + '.rb tr.tot td{font-weight:700;background:#e8eef5;border-top:2px solid #1f4e79}.rb .pos{color:#1b7f3b;font-weight:700}.rb .neg{color:#c62828;font-weight:700}.rb .st{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px}.rb .st div{border:1px solid #d7dde5;border-radius:8px;padding:8px 10px}.rb .st small{display:block;color:#5d6b7a;font-size:11px}.rb .st b{font-size:17px}.rb .nt{margin-top:12px;font-size:11.5px;color:#5d6b7a}';
+const monthLabel = m => { const a = m.split('-'); return new Date(+a[0], +a[1] - 1, 1).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long', year: 'numeric' }); };
+
+async function makePdf(title, blocks, file) {
+  if (!window.html2canvas) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  if (!window.jspdf) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  try { await Promise.all(['400', '600', '700'].map(w => document.fonts.load(w + ' 14px "Noto Sans Bengali"', 'অআকখ'))); await document.fonts.ready; } catch (e) {}
+  const root = document.createElement('div'); root.id = 'rroot'; root.style.cssText = 'position:absolute;left:-10000px;top:0;width:794px'; root.innerHTML = '<style>' + RCSS + '</style>'; document.body.appendChild(root);
+  const gen = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const pages = []; let body = null;
+  const newPage = () => {
+    const pg = document.createElement('div'); pg.className = 'rp';
+    pg.innerHTML = '<div class="rh"><div class="a"><b>' + p('Meal Manager', 'মিল ম্যানেজার') + '</b><span>' + esc(title) + '</span></div><div class="c"><b>' + esc(monthLabel(month)) + '</b><br>' + p('Generated', 'তৈরির তারিখ') + ': ' + gen + '</div></div><div class="rb"></div>'
+      + '<div class="rf"><span>Meal Manager</span><span>Developed by <b>Farhan Tanzid Shiyam</b></span><span class="pn"></span></div>';
+    root.appendChild(pg); pages.push(pg); body = pg.querySelector('.rb'); return body;
+  };
+  const over = () => body.scrollHeight > body.clientHeight + 1;
+  newPage();
+  blocks.forEach(b => {
+    if (b.type === 'stats') { const d = document.createElement('div'); d.className = 'st'; d.innerHTML = b.items.map(i => '<div><small>' + esc(i[0]) + '</small><b>' + esc(i[1]) + '</b></div>').join(''); body.appendChild(d); }
+    else if (b.type === 'note') { const d = document.createElement('div'); d.className = 'nt'; d.textContent = b.text; if (body.appendChild(d), over()) { body.removeChild(d); newPage().appendChild(d); } }
+    else if (b.type === 'table') {
+      const mk = cont => { const w = document.createElement('div'); if (b.title) { const h = document.createElement('h3'); h.textContent = b.title + (cont ? ' (' + p('continued', 'চলমান') + ')' : ''); w.appendChild(h); } const t = document.createElement('table'); t.innerHTML = '<thead><tr>' + b.cols.map(c => '<th class="' + (c.n ? 'n' : '') + '">' + esc(c.h) + '</th>').join('') + '</tr></thead><tbody></tbody>'; w.appendChild(t); return w; };
+      let w = mk(false), tb; const start = () => { body.appendChild(w); tb = w.querySelector('tbody'); }; start();
+      const add = (cells, tot) => { const tr = document.createElement('tr'); if (tot) tr.className = 'tot'; tr.innerHTML = cells.map((c, i) => { const o = (c && typeof c === 'object') ? c : { t: c }; return '<td class="' + ((b.cols[i] && b.cols[i].n ? 'n ' : '') + (o.c || '')) + '">' + esc(o.t) + '</td>'; }).join(''); tb.appendChild(tr); return tr; };
+      const all = b.rows.map(r => [r, 0]); if (b.foot) all.push([b.foot, 1]);
+      all.forEach(a => {
+        let tr = add(a[0], a[1]);
+        if (over()) {
+          if (tb.children.length === 1) { body.removeChild(w); newPage(); w = mk(false); start(); add(a[0], a[1]); }
+          else { tb.removeChild(tr); newPage(); w = mk(true); start(); add(a[0], a[1]); }
+        }
+      });
+    }
+  });
+  pages.forEach((pg, i) => { pg.querySelector('.pn').textContent = p('Page', 'পৃষ্ঠা') + ' ' + (i + 1) + ' / ' + pages.length; });
+  try {
+    const jsPDF = window.jspdf.jsPDF, pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    for (let i = 0; i < pages.length; i++) {
+      const cv = await window.html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, scrollX: 0, scrollY: 0, onclone: d => { const r = d.getElementById('rroot'); if (r) { r.style.left = '0'; } } });
+      if (i) pdf.addPage(); pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    }
+    pdf.save(file);
+  } finally { root.remove(); }
+}
+async function exportPdf() {
+  const ms = actives(), L = p('Total', 'মোট'), blocks = [], pad0 = (a, n) => { while (a.length < n) a.push(''); return a; };
+  if (tab === 'dash') {
+    const c = calc();
+    blocks.push({ type: 'stats', items: [[p('Total bazar', 'মোট বাজার'), money(c.bz)], [p('Total meals', 'মোট মিল'), money(c.totM)], [p('Meal rate', 'মিল রেট'), money(c.rate)], [p('Other costs', 'অন্যান্য খরচ'), money(c.oc)]] });
+    blocks.push({ type: 'table', title: p('Member summary', 'সদস্যভিত্তিক হিসাব'), cols: [{ h: p('Member', 'সদস্য') }, { h: p('Meals', 'মিল'), n: 1 }, { h: p('Meal cost', 'মিল খরচ'), n: 1 }, { h: p('Other share', 'অন্য খরচের ভাগ'), n: 1 }, { h: p('Bazar paid', 'বাজারে খরচ'), n: 1 }, { h: p('Balance', 'ব্যালেন্স'), n: 1 }],
+      rows: c.rows.length ? c.rows.map(r => [r.m.name, money(r.meals), money(r.cost), money(r.share), money(r.paid), { t: money(r.bal), c: r.bal >= 0 ? 'pos' : 'neg' }]) : [pad0([p('No active members', 'কোনো সক্রিয় সদস্য নেই')], 6)],
+      foot: [L, money(sum(c.rows, r => r.meals)), money(sum(c.rows, r => r.cost)), money(sum(c.rows, r => r.share)), money(sum(c.rows, r => r.paid)), money(sum(c.rows, r => r.bal))] });
+    blocks.push({ type: 'note', text: p('Meal rate = total bazar ÷ total meals. Balance = bazar paid − meal cost − other share. Positive = gets back, negative = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। ধনাত্মক = ফেরত পাবে, ঋণাত্মক = দিতে হবে।') });
+  } else if (tab === 'meals') {
+    const dates = Array.from(new Set(S.meals.map(x => x.date))).sort();
+    if (isAdmin) {
+      const cols = [{ h: p('Date', 'তারিখ') }].concat(ms.map(m => ({ h: m.name, n: 1 })), [{ h: L, n: 1 }]), tot = ms.map(() => 0);
+      const rows = dates.map(d => { let t = 0; const r = [d]; ms.forEach((m, i) => { const v = sum(S.meals.filter(x => x.date === d && x.uid === m.id), mv); t += v; tot[i] += v; r.push(v ? money(v) : '-'); }); r.push(money(t)); return r; });
+      blocks.push({ type: 'table', title: p('Day-wise meals', 'দিনভিত্তিক মিল'), cols, rows: rows.length ? rows : [pad0([p('No meals recorded', 'কোনো মিল নেই')], cols.length)], foot: [L].concat(tot.map(money), [money(sum(tot, v => v))]) });
+    } else {
+      const mine = S.meals.filter(x => x.uid === user.uid).sort((a, b) => a.date.localeCompare(b.date));
+      blocks.push({ type: 'table', title: p('My meals', 'আমার মিল'), cols: [{ h: p('Date', 'তারিখ') }, { h: p('Meals', 'মিল'), n: 1 }], rows: mine.length ? mine.map(x => [x.date, money(mv(x))]) : [['-', '']], foot: [L, money(sum(mine, mv))] });
+    }
+  } else if (tab === 'bazar') {
+    const rows = S.bazar.slice().sort((a, b) => a.date.localeCompare(b.date));
+    blocks.push({ type: 'table', title: p('Bazar list', 'বাজারের তালিকা'), cols: [{ h: p('Date', 'তারিখ') }, { h: p('Bought by', 'কে বাজার করেছেন') }, { h: p('Note', 'বিবরণ') }, { h: p('Amount', 'টাকা'), n: 1 }], rows: rows.length ? rows.map(x => [x.date, nameOf(x.uid), x.note || '', money(x.amount)]) : [pad0([p('Nothing yet', 'এখনো কিছু নেই')], 4)], foot: ['', '', L, money(sum(rows, x => x.amount))] });
+  } else if (tab === 'costs') {
+    const rows = S.costs.slice().sort((a, b) => a.date.localeCompare(b.date));
+    blocks.push({ type: 'table', title: p('Other costs', 'অন্যান্য খরচ'), cols: [{ h: p('Date', 'তারিখ') }, { h: p('Title', 'খাত') }, { h: p('Amount', 'টাকা'), n: 1 }], rows: rows.length ? rows.map(x => [x.date, x.note || '', money(x.amount)]) : [pad0([p('Nothing yet', 'এখনো কিছু নেই')], 3)], foot: ['', L, money(sum(rows, x => x.amount))] });
+  } else return;
+  await makePdf(tt(tab), blocks, 'Meal-' + tab + '-' + month + '.pdf');
+}
+
 /* ============ start ============ */
 onAuthStateChanged(auth, async u => {
   user = u; me = null; isAdmin = false;
@@ -288,7 +379,8 @@ onAuthStateChanged(auth, async u => {
     me = s.data();
   } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p><div class="uid">' + esc(u.uid) + '</div><button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>'; return; }
   if (!isAdmin && me.status !== 'active') return waitScreen();
-  tab = (location.hash || '').slice(1); if (!TABS[tab]) tab = 'dash';
+  let t0 = ''; try { t0 = sessionStorage.getItem('mm_tab') || ''; sessionStorage.removeItem('mm_tab'); } catch (e) {}
+  tab = t0 || lastSeg; if (!TABS[tab]) tab = 'dash'; setUrl();
   await refresh();
 });
 </script>
