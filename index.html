@@ -70,9 +70,49 @@ body:not(.open) .nav span,body:not(.open) .sb-t,body:not(.open) .sb-u{display:no
 body:not(.open) .nav{justify-content:center;padding:10px 0}
 .app-foot{text-align:center;color:var(--muted);font-size:12.5px;padding:14px 12px 22px;border-top:1px solid var(--border);margin:0 18px}
 .app-foot b{color:var(--primary)}
+#mbar,#mov{display:none}
+/* ===== phones / small screens only (desktop layout is untouched) ===== */
+@media(max-width:720px){
+html{-webkit-text-size-adjust:100%}body{-webkit-tap-highlight-color:transparent}
+body.in{padding-left:0!important;padding-top:58px}
+body.in #mbar{display:flex;position:fixed;top:0;left:0;right:0;height:56px;z-index:40;align-items:center;gap:12px;padding:0 12px;background:var(--panel);border-bottom:3px solid var(--gold)}
+#mbar b{font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.in .side{display:flex;width:272px!important;transform:translateX(-102%);transition:transform .22s ease;z-index:60;box-shadow:none}
+body.mopen .side{transform:none;box-shadow:6px 0 28px rgba(0,0,0,.3)}
+body.mopen #mov{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:55}
+.side .nav span{display:inline!important}.side .sb-t,.side .sb-u{display:block!important}
+.side .nav{justify-content:flex-start!important;padding:13px 12px!important;font-size:15.5px}
+.wrap{padding:12px 12px 20px}
+.card{padding:14px;border-radius:12px}
+.center{margin:14px auto 0}
+.center .btn{width:100%;justify-content:center;margin:6px 0 0}
+input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
+.btn{min-height:44px;padding:10px 16px;justify-content:center}.btn-sm{min-height:38px;padding:7px 12px}
+.bar h2{display:none}.bar{margin-bottom:10px}.bar .no{width:100%}
+.grid{grid-template-columns:repeat(2,1fr);gap:8px}.stat{padding:10px 12px}.stat b{font-size:18px}
+.frm{grid-template-columns:1fr;gap:10px}.frm .btn{width:100%}
+.tw{border:0;overflow:visible}
+.tbl{min-width:0;font-size:14.5px}
+.tbl thead{display:none}
+.tbl,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+.tbl tr{border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:10px;background:var(--panel)}
+.tbl tr:last-child td,.tbl td{border-bottom:0}
+.tbl td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4px 0;text-align:right}
+.tbl td::before{content:attr(data-label);color:var(--muted);font-size:12.5px;font-weight:600;text-align:left;flex:none}
+.tbl td:first-child{font-weight:700;justify-content:flex-start;text-align:left;font-size:15.5px;padding-bottom:6px;margin-bottom:2px;border-bottom:1px dashed var(--border)}
+.tbl td:first-child::before,.tbl td[colspan]::before,.tbl td[data-label=""]::before{content:none}
+.tbl td[data-label=""]{justify-content:flex-end}
+.tbl td[colspan]{justify-content:center;text-align:center}
+.tbl input[type=number]{width:110px;text-align:right}
+.tbl .n{text-align:right}
+.uid{font-size:11.5px}
+.app-foot{margin:0 12px;padding:12px 8px 20px}
+}
 </style>
 </head>
 <body>
+<div id="mbar"><button class="burger" data-a="menu" aria-label="Menu"><span></span><span></span><span></span></button><b id="mtitle"></b></div>
+<div id="mov" data-a="mclose"></div>
 <aside class="side" id="side"></aside>
 <main class="wrap" id="app"></main>
 <footer class="app-foot">Developed by <b>Farhan Tanzid Shiyam</b></footer>
@@ -103,12 +143,12 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query
 
 /* ============ SETTINGS: paste YOUR Firebase web-app config here ============ */
 const firebaseConfig = {
-  apiKey: "AIzaSyA3q4vJofWBeMcXxrAd0ZXe_MClZLBk3vI",
-  authDomain: "meal-manager-85b66.firebaseapp.com",
-  projectId: "meal-manager-85b66",
-  storageBucket: "meal-manager-85b66.firebasestorage.app",
-  messagingSenderId: "336695996080",
-  appId: "1:336695996080:web:3c9b8ba6592398d4441575"
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_PROJECT_ID.firebasestorage.app",
+  messagingSenderId: "PASTE",
+  appId: "PASTE"
 };
 const fb = initializeApp(firebaseConfig), auth = getAuth(fb), db = getFirestore(fb);
 
@@ -216,11 +256,13 @@ function renderSide() {
     + '<button class="nav" data-a="theme">' + ico('theme') + '<span>' + p('Dark / Light', 'ডার্ক / লাইট') + '</span></button>'
     + '<button class="nav" data-a="lang">' + ico('lang') + '<span>' + (lang === 'bn' ? 'English' : 'বাংলা') + '</span></button>'
     + '<button class="nav danger" data-a="logout">' + ico('out') + '<span>' + p('Sign out', 'সাইন আউট') + '</span></button></div>';
-  $('#side').querySelectorAll('[data-t]').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; setUrl(); renderSide(); renderTab(); if (innerWidth < 721) { document.body.classList.remove('open'); } });
+  $('#side').querySelectorAll('[data-t]').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; setUrl(); renderSide(); renderTab(); if (innerWidth < 721) { document.body.classList.remove('open', 'mopen'); } });
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest && e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
-  if (a === 'menu') { const o = !document.body.classList.contains('open'); document.body.classList.toggle('open', o); try { localStorage.setItem('mm_open', o ? '1' : '0'); } catch (x) {} }
+  if (a === 'menu' && innerWidth <= 720) document.body.classList.toggle('mopen');
+  else if (a === 'mclose') document.body.classList.remove('mopen');
+  else if (a === 'menu') { const o = !document.body.classList.contains('open'); document.body.classList.toggle('open', o); try { localStorage.setItem('mm_open', o ? '1' : '0'); } catch (x) {} }
   else if (a === 'lang') { lang = lang === 'bn' ? 'en' : 'bn'; try { localStorage.setItem('mm_lang', lang); } catch (x) {} if (me) { renderSide(); renderTab(); } else if (user) waitScreen(); else authScreen('in'); }
   else if (a === 'theme') { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', nx); try { localStorage.setItem('mm_theme', nx); } catch (x) {} }
   else if (a === 'pdf') { const old = b.textContent; b.disabled = true; b.textContent = p('Preparing...', 'তৈরি হচ্ছে...'); try { await exportPdf(); } catch (x) { alert(p('PDF failed: ', 'PDF তৈরি হয়নি: ') + (x && x.message || x)); } b.disabled = false; b.textContent = old; }
@@ -232,8 +274,12 @@ function head(title, noMonth) {
 function bindMonth() { const m = $('#mo'); if (m) m.onchange = async () => { if (!m.value) return; month = m.value; mdate = month === nowM() ? nowD() : month + '-01'; await refresh(); }; }
 function renderTab() {
   ({ dash: tabDash, meals: tabMeals, bazar: () => tabList('bazar'), costs: () => tabList('costs'), members: tabMembers, pdf: tabPdf, account: tabAccount })[tab]();
-  bindMonth(); document.title = tt(tab) + ' - Meal Manager';
+  bindMonth(); document.title = tt(tab) + ' - Meal Manager'; const mt = $('#mtitle'); if (mt) mt.textContent = tt(tab);
 }
+
+/* phones: label every table cell so rows can show as cards */
+function mobLabel() { app.querySelectorAll('table.tbl').forEach(t => { const hs = Array.from(t.querySelectorAll('thead th')).map(h => h.textContent.trim()); t.querySelectorAll('tbody tr').forEach(tr => Array.from(tr.children).forEach((td, i) => { if (!td.hasAttribute('colspan')) td.dataset.label = hs[i] || ''; })); }); }
+new MutationObserver(mobLabel).observe(app, { childList: true, subtree: true });
 
 /* ============ tabs ============ */
 function tabDash() {
