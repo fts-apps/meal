@@ -71,6 +71,7 @@ body:not(.open) .nav{justify-content:center;padding:10px 0}
 .app-foot{text-align:center;color:var(--muted);font-size:12.5px;padding:14px 12px 22px;border-top:1px solid var(--border);margin:0 18px}
 .app-foot b{color:var(--primary)}
 #mbar,#mov{display:none}
+.ld{text-align:center}.ld .ldt{font-weight:600}.ld .ldt b{color:var(--primary)}.ldbar{height:8px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:12px}.ldbar i{display:block;height:100%;width:0;background:var(--primary);border-radius:99px;transition:width .15s}
 /* ===== phones / small screens only (desktop layout is untouched) ===== */
 @media(max-width:720px){
 html{-webkit-text-size-adjust:100%}body{-webkit-tap-highlight-color:transparent}
@@ -118,6 +119,29 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
 <footer class="app-foot">Developed by <b>Farhan Tanzid Shiyam</b></footer>
 
 <script>
+(function () {
+  var shown = 0, tgt = 0, tm = null, c = 0, lg = 'bn';
+  try { lg = localStorage.getItem('mm_lang') || 'bn'; } catch (e) {}
+  function tick() {
+    var e = document.getElementById('ldp'), i = document.getElementById('ldi');
+    if (!e) { clearInterval(tm); tm = null; return; }
+    c++;
+    if (shown < tgt) shown += Math.max(1, Math.ceil((tgt - shown) / 8));
+    else if (shown < Math.min(tgt + 10, 98) && c % 12 === 0) shown++;
+    if (shown > 99) shown = 99;
+    e.textContent = shown + '%'; i.style.width = shown + '%';
+  }
+  /* progress shown while Firebase / data loads: steps move the bar, it creeps slowly in between */
+  window.__ld = function (n) {
+    tgt = n;
+    if (!document.getElementById('ldp')) {
+      document.getElementById('app').innerHTML = '<div class="card center ld"><div class="ldt">' + (lg === 'bn' ? 'লোড হচ্ছে' : 'Loading') + ' <b id="ldp">0%</b></div><div class="ldbar"><i id="ldi"></i></div></div>';
+      shown = Math.max(0, n - 25);
+    }
+    if (!tm) tm = setInterval(tick, 30);
+    tick();
+  };
+})();
 /* login page appears instantly (plain HTML); Firebase then checks the saved session in the background */
 (function () {
   var lang = 'bn', hint = '';
@@ -131,7 +155,7 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
       + '<p style="margin-bottom:0"><button class="lnk" id="sw">' + (up ? p('Already have an account? Sign in', 'অ্যাকাউন্ট আছে? সাইন ইন', l) : p('New here? Register', 'নতুন? নিবন্ধন করুন', l)) + '</button>' + (up ? '' : ' &nbsp;·&nbsp; <button class="lnk" id="fp">' + p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?', l) + '</button>') + '</p></div>';
   };
   /* returning users: keep the page empty for a moment instead of flashing the login form */
-  if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(false, lang); window.__staticLogin = true; }
+  if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(false, lang); window.__staticLogin = true; } else { window.__ld(4); }
   /* a click made before Firebase finished loading is replayed once it is ready */
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#go,#gg'); if (b && !window.__ready) { window.__early = b.id; } });
 })();
@@ -152,6 +176,7 @@ const firebaseConfig = {
 };
 const fb = initializeApp(firebaseConfig), auth = getAuth(fb), db = getFirestore(fb);
 
+const ld = n => { if (window.__ld) window.__ld(n); };
 const $ = (s, r) => (r || document).querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => ('0' + n).slice(-2);
@@ -244,8 +269,8 @@ function calc() {
 
 /* ============ shell ============ */
 async function refresh() {
-  app.innerHTML = '<div class="card center" style="text-align:center"><span class="spin"></span></div>';
-  try { await load(); } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p></div>'; return; }
+  ld(72);
+  try { await load(); ld(96); saveCache(); } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p></div>'; return; }
   document.body.classList.add('in'); renderSide(); renderTab();
 }
 function renderSide() {
@@ -380,29 +405,45 @@ function tabPdf() {
 }
 /* ============ PDF ============ */
 const loadJs = s => new Promise((res, rej) => { const e = document.createElement('script'); e.src = s; e.onload = res; e.onerror = () => rej(new Error('Could not load ' + s)); document.head.appendChild(e); });
-const RCSS = '.rp{width:794px;height:1123px;position:relative;background:#fff;color:#1b2430;font-family:"Noto Sans Bengali",Arial,sans-serif;font-size:13px;line-height:1.5;overflow:hidden;box-sizing:border-box}.rp *{box-sizing:border-box}'
-  + '.rh{position:absolute;left:40px;right:40px;top:30px;height:82px;border-bottom:3px solid #c9a227;display:flex;justify-content:space-between;align-items:flex-start}.rh .a b{display:block;font-size:23px;color:#1f4e79;line-height:1.35}.rh .a span{font-size:15px;font-weight:600}.rh .c{text-align:right;font-size:12px;color:#5d6b7a;line-height:1.6}.rh .c b{font-size:14px;color:#1b2430}'
-  + '.rb{position:absolute;left:40px;right:40px;top:128px;bottom:80px;overflow:hidden}.rf{position:absolute;left:40px;right:40px;bottom:26px;height:36px;border-top:1px solid #c8d0da;display:flex;justify-content:space-between;align-items:flex-end;font-size:11.5px;color:#5d6b7a}.rf b{color:#1f4e79}'
-  + '.rb h3{margin:14px 0 6px;font-size:14px;color:#000}.rb table{width:100%;border-collapse:collapse;font-size:12.5px}.rb th,.rb td{border:1px solid #000;padding:4px 7px;color:#000;background:none;vertical-align:top}.rb th{font-weight:700;text-align:left}.rb .n{text-align:right}.rb tr.tot td{font-weight:700}.rb table.x1{font-size:10.5px}.rb table.x2{font-size:9px}.rb table.x1 th,.rb table.x1 td,.rb table.x2 th,.rb table.x2 td{padding:3px 4px}.rb .nt{margin-top:12px;font-size:11.5px;color:#444}';
+const RCSS = '.rp{width:794px;height:1123px;position:relative;background:#fff;color:#000;font-family:"Noto Sans Bengali",Arial,sans-serif;font-size:13px;line-height:1.5;overflow:hidden;box-sizing:border-box}.rp *{box-sizing:border-box}'
+  + '.rh{position:absolute;left:40px;right:40px;top:26px;height:102px;border-bottom:3px solid #1f3a5f;display:flex;align-items:center;gap:12px;padding-bottom:8px}.rh .lg{width:52px;height:52px;flex:none;background:#1f3a5f;color:#fff;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center;border-bottom:4px solid #c9a227}.rh .a{flex:1}.rh .a b{display:block;font-size:22px;color:#1f3a5f;line-height:1.35}.rh .a span{font-size:14px;font-weight:600;color:#333}'
+  + '.rh .c{text-align:right;font-size:11.5px;color:#444;line-height:1.6}.rh .c b{font-size:13.5px;color:#000}.rh .q{width:76px;flex:none;text-align:center;font-size:8px;color:#555;line-height:1.2}.rh .q img{width:70px;height:70px;display:block;margin:0 auto 2px}'
+  + '.rb{position:absolute;left:40px;right:40px;top:144px;bottom:78px;overflow:hidden}.rf{position:absolute;left:40px;right:40px;bottom:26px;height:36px;border-top:1px solid #1f3a5f;display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;color:#444}.rf b{color:#1f3a5f}'
+  + '.rb h3{margin:16px 0 6px;font-size:13.5px;color:#1f3a5f;border-left:4px solid #1f3a5f;padding-left:8px}.rb table{width:100%;border-collapse:collapse;font-size:12.5px}.rb th,.rb td{border:1px solid #000;padding:4px 7px;color:#000;background:none;vertical-align:top}.rb th{font-weight:700;text-align:left}.rb .n{text-align:right}.rb tr.tot td{font-weight:700}'
+  + '.rb table.inf{margin-top:2px}.rb table.inf th{background:#eef1f5;width:16%;white-space:nowrap}.rb table.inf td{width:34%}.rb table.x1{font-size:10.5px}.rb table.x2{font-size:9px}.rb table.x1 th,.rb table.x1 td,.rb table.x2 th,.rb table.x2 td{padding:3px 4px}'
+  + '.rb .sg{display:flex;gap:30px;margin-top:54px}.rb .sg div{flex:1;border-top:1px solid #000;padding-top:4px;text-align:center;font-size:12px;font-weight:600}.rb .nt{margin-top:12px;font-size:11.5px;color:#444}';
 const monthLabel = m => { const a = m.split('-'); return new Date(+a[0], +a[1] - 1, 1).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long', year: 'numeric' }); };
 
-async function makePdf(title, blocks, file, period) {
+async function makePdf(title, blocks, file, period, meta) {
+  meta = meta || {};
   if (!window.html2canvas) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
   if (!window.jspdf) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   try { await Promise.all(['400', '600', '700'].map(w => document.fonts.load(w + ' 14px "Noto Sans Bengali"', 'অআকখ'))); await document.fonts.ready; } catch (e) {}
+  let qr = '';
+  try {
+    if (!window.qrcode) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js');
+    const q = window.qrcode(0, 'M'); q.addData((okRoute ? location.origin + pathBase + '\n' : '') + (meta.qrText || 'Meal Manager') + '\nID: ' + (meta.id || '')); q.make(); qr = q.createDataURL(4, 0);
+  } catch (e) { qr = ''; }
   const root = document.createElement('div'); root.id = 'rroot'; root.style.cssText = 'position:absolute;left:-10000px;top:0;width:794px'; root.innerHTML = '<style>' + RCSS + '</style>'; document.body.appendChild(root);
   const gen = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const pages = []; let body = null;
   const newPage = () => {
     const pg = document.createElement('div'); pg.className = 'rp';
-    pg.innerHTML = '<div class="rh"><div class="a"><b>' + p('Meal Manager', 'মিল ম্যানেজার') + '</b><span>' + esc(title) + '</span></div><div class="c"><b>' + esc(period || monthLabel(month)) + '</b><br>' + p('Generated', 'তৈরির তারিখ') + ': ' + gen + '</div></div><div class="rb"></div>'
-      + '<div class="rf"><span>Meal Manager</span><span>Developed by <b>Farhan Tanzid Shiyam</b></span><span class="pn"></span></div>';
+    pg.innerHTML = '<div class="rh"><div class="lg">MM</div><div class="a"><b>' + p('Meal Manager', 'মিল ম্যানেজার') + '</b><span>' + esc(title) + '</span></div><div class="c"><b>' + esc(period || monthLabel(month)) + '</b><br>' + p('Generated', 'তৈরির তারিখ') + ': ' + gen + '</div>' + (qr ? '<div class="q"><img src="' + qr + '"><span>' + p('Scan to verify', 'যাচাই করতে স্ক্যান') + '</span></div>' : '') + '</div><div class="rb"></div>'
+      + '<div class="rf"><span>' + esc(meta.id || 'Meal Manager') + '</span><span>Developed by <b>Farhan Tanzid Shiyam</b></span><span class="pn"></span></div>';
     root.appendChild(pg); pages.push(pg); body = pg.querySelector('.rb'); return body;
   };
   const over = () => body.scrollHeight > body.clientHeight + 1;
+  const place = d => { body.appendChild(d); if (over()) { body.removeChild(d); newPage().appendChild(d); } };
   newPage();
   blocks.forEach(b => {
     if (b.type === 'pagebreak') { newPage(); return; }
+    if (b.type === 'info') {
+      const t = document.createElement('table'); t.className = 'inf'; let h = '';
+      for (let i = 0; i < b.items.length; i += 2) h += '<tr>' + [b.items[i], b.items[i + 1]].map(it => it ? '<th>' + esc(it[0]) + '</th><td>' + esc(it[1]) + '</td>' : '<th></th><td></td>').join('') + '</tr>';
+      t.innerHTML = '<tbody>' + h + '</tbody>'; place(t); return;
+    }
+    if (b.type === 'sign') { const d = document.createElement('div'); d.className = 'sg'; d.innerHTML = b.labels.map(l => '<div>' + esc(l) + '</div>').join(''); place(d); return; }
     if (b.type === 'stats') { const d = document.createElement('div'); d.className = 'st'; d.innerHTML = b.items.map(i => '<div><small>' + esc(i[0]) + '</small><b>' + esc(i[1]) + '</b></div>').join(''); body.appendChild(d); }
     else if (b.type === 'note') { const d = document.createElement('div'); d.className = 'nt'; d.textContent = b.text; if (body.appendChild(d), over()) { body.removeChild(d); newPage().appendChild(d); } }
     else if (b.type === 'table') {
@@ -436,6 +477,9 @@ async function exportPdf() {
   const bazarTbl = (list, title) => ({ type: 'table', title, cols: [{ h: p('Date', 'তারিখ') }, { h: p('Bought by', 'কে বাজার করেছেন') }, { h: p('Item / note', 'বিবরণ') }, { h: p('Amount', 'টাকা'), n: 1 }], rows: list.length ? list.map(x => [x.date, nameOf(x.uid), x.note || '', money(x.amount)]) : [pad0([p('No bazar', 'কোনো বাজার নেই')], 4)], foot: ['', '', L, money(sum(list, x => x.amount))] });
   const costTbl = (list, title) => ({ type: 'table', title, cols: [{ h: p('Date', 'তারিখ') }, { h: p('Title', 'খাত') }, { h: p('Amount', 'টাকা'), n: 1 }], rows: list.length ? list.map(x => [x.date, x.note || '', money(x.amount)]) : [pad0([p('No other costs', 'কোনো খরচ নেই')], 3)], foot: ['', L, money(sum(list, x => x.amount))] });
   const byDate = (a, b) => a.date.localeCompare(b.date);
+  const genT = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const mkInfo = (type, per, id) => ({ type: 'info', items: [[p('Report type', 'রিপোর্টের ধরন'), type], [p('Period', 'সময়কাল'), per], [p('Document ID', 'ডকুমেন্ট নং'), id], [p('Generated on', 'তৈরির সময়'), genT], [p('Prepared by', 'প্রস্তুতকারক'), (me && me.name) || (user && user.email) || ''], [p('Active members', 'সক্রিয় সদস্য'), String(ms.length)]] });
+  const sign = { type: 'sign', labels: [p('Prepared by', 'প্রস্তুতকারক'), p('Checked by', 'যাচাইকারী'), p('Approved by', 'অনুমোদনকারী')] };
   if (kind === 'day') {
     const d = ($('#pd') || {}).value;
     if (!d || d.slice(0, 7) !== month) throw new Error(p('Pick a date inside the selected month.', 'নির্বাচিত মাসের ভেতরের একটি তারিখ দিন।'));
@@ -445,7 +489,9 @@ async function exportPdf() {
     blocks.push({ type: 'table', title: p('Meals', 'মিল'), cols: [{ h: p('Member', 'সদস্য') }, { h: p('Meals', 'মিল'), n: 1 }], rows: ms.length ? ms.map((m, i) => [m.name, per[i] ? money(per[i]) : '-']) : [['-', '']], foot: [L, money(sum(per, v => v))] });
     blocks.push(bazarTbl(bz.slice().sort(byDate), p('Bazar details', 'বাজারের বিবরণ')));
     blocks.push(costTbl(oc.slice().sort(byDate), p('Other costs', 'অন্যান্য খরচ')));
-    await makePdf(p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), blocks, 'Meal-day-' + d + '.pdf', d);
+    const id = 'MM-D-' + d.replace(/-/g, '');
+    blocks.unshift(mkInfo(p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), d, id)); blocks.push(sign);
+    await makePdf(p('Day-wise report', 'দিনভিত্তিক রিপোর্ট'), blocks, 'Meal-day-' + d + '.pdf', d, { id, qrText: 'Meal Manager Day-wise Report ' + d });
     return;
   }
   blocks.push(kv(p('Summary', 'সারসংক্ষেপ'), [[p('Active members', 'সক্রিয় সদস্য'), String(ms.length)], [p('Total bazar', 'মোট বাজার'), money(c.bz)], [p('Total meals', 'মোট মিল'), money(c.totM)], [p('Meal rate', 'মিল রেট'), money(c.rate)], [p('Other costs', 'অন্যান্য খরচ'), money(c.oc)], [p('Other cost share per member', 'প্রতি সদস্যের অন্য খরচের ভাগ'), money(c.share)]]));
@@ -460,15 +506,33 @@ async function exportPdf() {
     rows: c.rows.length ? c.rows.map(r => [r.m.name, money(r.meals), money(r.cost), money(r.share), money(r.paid), money(r.bal)]) : [pad0([p('No active members', 'কোনো সক্রিয় সদস্য নেই')], 6)],
     foot: [L, money(sum(c.rows, r => r.meals)), money(sum(c.rows, r => r.cost)), money(sum(c.rows, r => r.share)), money(sum(c.rows, r => r.paid)), money(sum(c.rows, r => r.bal))] });
   blocks.push({ type: 'note', text: p('Meal rate = total bazar ÷ total meals. Balance = bazar paid − meal cost − other share. Positive = gets back, negative = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। ধনাত্মক = ফেরত পাবে, ঋণাত্মক = দিতে হবে।') });
-  await makePdf(p('Monthly report', 'মাসিক রিপোর্ট'), blocks, 'Meal-month-' + month + '.pdf', monthLabel(month));
+  const id = 'MM-M-' + month.replace('-', '');
+  blocks.unshift(mkInfo(p('Monthly report', 'মাসিক রিপোর্ট'), monthLabel(month), id)); blocks.push(sign);
+  await makePdf(p('Monthly report', 'মাসিক রিপোর্ট'), blocks, 'Meal-month-' + month + '.pdf', monthLabel(month), { id, qrText: 'Meal Manager Monthly Report ' + month });
 }
 
 /* ============ start ============ */
+/* instant screen from the last visit (refreshed quietly in the background) */
+let CACHE = null;
+function saveCache() { try { if (user && me && month === nowM()) localStorage.setItem('mm_c', JSON.stringify({ uid: user.uid, email: user.email, me, isAdmin, S, month })); } catch (e) {} }
+(function earlyCache() {
+  try {
+    const h = localStorage.getItem('mm_hint'), c = JSON.parse(localStorage.getItem('mm_c') || 'null');
+    if (!h || h === '1' || !c || c.uid !== h || c.month !== nowM() || !c.me || !(c.isAdmin || c.me.status === 'active')) return;
+    CACHE = c; user = { uid: c.uid, email: c.email }; me = c.me; isAdmin = c.isAdmin; S = c.S; month = c.month;
+    let t0 = ''; try { t0 = sessionStorage.getItem('mm_tab') || ''; sessionStorage.removeItem('mm_tab'); } catch (e) {}
+    tab = t0 || lastSeg; if (!TABS[tab]) tab = 'dash'; setUrl();
+    document.body.classList.add('in'); renderSide(); renderTab();
+  } catch (e) { CACHE = null; }
+})();
+
+ld(12);
 onAuthStateChanged(auth, async u => {
+  const quiet = !!(CACHE && u && CACHE.uid === u.uid);
   user = u; me = null; isAdmin = false;
-  try { u ? localStorage.setItem('mm_hint', '1') : localStorage.removeItem('mm_hint'); } catch (e) {}
-  if (!u) { document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen('in'); }
-  app.innerHTML = '<div class="card center" style="text-align:center"><span class="spin"></span></div>';
+  try { if (u) localStorage.setItem('mm_hint', u.uid); else { localStorage.removeItem('mm_hint'); localStorage.removeItem('mm_c'); } } catch (e) {}
+  if (!u) { CACHE = null; document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen('in'); }
+  if (!quiet) ld(35);
   const pMe = getDoc(mref()); pMe.catch(() => {});
   isAdmin = await getDoc(doc(db, 'admins', u.uid)).then(() => true, () => false);   // rules allow this read only for the manager UID
   try {
@@ -476,7 +540,14 @@ onAuthStateChanged(auth, async u => {
     if (!s.exists()) { await setDoc(mref(), { name: pendingName || u.displayName || (u.email || '').split('@')[0], email: u.email || '', role: isAdmin ? 'admin' : 'member', status: isAdmin ? 'active' : 'pending', createdAt: serverTimestamp() }); s = await getDoc(mref()); }
     me = s.data();
   } catch (e) { console.warn(e); app.innerHTML = '<div class="card center"><p class="msg">' + esc(emsg(e)) + '</p><div class="uid">' + esc(u.uid) + '</div><button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>'; return; }
-  if (!isAdmin && me.status !== 'active') return waitScreen();
+  if (!quiet) ld(60);
+  if (!isAdmin && me.status !== 'active') { try { localStorage.removeItem('mm_c'); } catch (e) {} CACHE = null; return waitScreen(); }
+  if (quiet) {
+    try { await load(); saveCache(); } catch (e) { console.warn(e); return; }
+    const a = document.activeElement;
+    if (!(a && app.contains(a) && /^(INPUT|SELECT)$/.test(a.tagName))) { renderSide(); renderTab(); }
+    return;
+  }
   let t0 = ''; try { t0 = sessionStorage.getItem('mm_tab') || ''; sessionStorage.removeItem('mm_tab'); } catch (e) {}
   tab = t0 || lastSeg; if (!TABS[tab]) tab = 'dash'; setUrl();
   await refresh();
