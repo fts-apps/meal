@@ -196,7 +196,7 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
   try { var th = localStorage.getItem('mm_theme'); if (th) document.documentElement.setAttribute('data-theme', th); if (localStorage.getItem('mm_open') === '1') document.body.classList.add('open'); } catch (e) {}
   window.__vw = /[?&]r=/.test(location.search);
   if (window.__vw) { window.__ld(8); }
-  else if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(location.hash === '#forgot' ? 'fp' : 'in', lang); window.__staticLogin = true; }
+  else if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(((location.pathname.split('/').filter(Boolean).pop() || '') === 'forgot' || (function () { try { return sessionStorage.getItem('mm_fp') === '1'; } catch (e) { return false; } })()) ? 'fp' : 'in', lang); window.__staticLogin = true; }
   else {
     /* returning user: paint the last screen (saved HTML) right now, before Firebase has even downloaded */
     try {
@@ -268,8 +268,9 @@ const TABS = { dash: ['Dashboard', 'ড্যাশবোর্ড'], meals: ['M
 const tt = k => p(TABS[k][0], TABS[k][1]);
 /* clean URLs: /app/ , /app/meals ... (no # or ?). Needs 404.html beside index.html on static hosts */
 const lastSeg = location.pathname.split('/').filter(Boolean).pop() || '';
-const okRoute = /^https?:$/.test(location.protocol) && (/\/$/.test(location.pathname) || /index\.html$/.test(location.pathname) || (lastSeg in TABS));
-const pathBase = (() => { let q = location.pathname.replace(/index\.html$/, ''); if (lastSeg in TABS) q = q.replace(new RegExp(lastSeg + '/?$'), ''); return q.endsWith('/') ? q : q + '/'; })();
+const okRoute = /^https?:$/.test(location.protocol) && (/\/$/.test(location.pathname) || /index\.html$/.test(location.pathname) || (lastSeg in TABS) || lastSeg === 'forgot');
+const pathBase = (() => { let q = location.pathname.replace(/index\.html$/, ''); if (lastSeg in TABS || lastSeg === 'forgot') q = q.replace(new RegExp(lastSeg + '/?$'), ''); return q.endsWith('/') ? q : q + '/'; })();
+const isFp = () => { let f = false; try { f = sessionStorage.getItem('mm_fp') === '1'; } catch (e) {} return f || (location.pathname.split('/').filter(Boolean).pop() || '') === 'forgot'; };
 const tabUrl = k => okRoute ? pathBase + (k === 'dash' ? '' : k) : 'javascript:void(0)';
 const setUrl = () => { if (okRoute) { try { history.replaceState(null, '', tabUrl(tab)); } catch (e) {} } };
 const setMsg = (id, m, ok) => { const e = $('#' + id); if (e) { e.textContent = m || ''; e.className = 'msg' + (ok ? ' ok' : ''); } };
@@ -289,6 +290,7 @@ function authScreen(mode) {
   window.__staticLogin = false; window.scrollTo(0, 0);
   if (fpm) {
     if (window.__fpEmail) $('#uE').value = window.__fpEmail;
+    try { if (sessionStorage.getItem('mm_fp') === '1') { sessionStorage.removeItem('mm_fp'); if (okRoute) history.replaceState(null, '', pathBase + 'forgot'); } } catch (x) {}
     const send = async () => {
       const em = $('#uE').value.trim();
       if (!em) return setMsg('m', p('Type your email first.', 'আগে ইমেইল লিখুন।'));
@@ -297,7 +299,7 @@ function authScreen(mode) {
       catch (e) { $('#fpGo').disabled = false; setMsg('m', emsg(e)); }
     };
     $('#fpGo').onclick = send; $('#uE').onkeydown = e => { if (e.key === 'Enter') send(); };
-    $('#fb').onclick = () => { if (location.hash === '#forgot') history.back(); else authScreen('in'); };
+    $('#fb').onclick = () => { if (history.state && history.state.fp) history.back(); else { if (okRoute) { try { history.replaceState(null, '', pathBase); } catch (x) {} } authScreen('in'); } };
     window.__ready = true; return;
   }
   const go = async () => {
@@ -314,12 +316,12 @@ function authScreen(mode) {
   $('#sw').onclick = () => authScreen(up ? 'in' : 'up');
   if ($('#fp')) $('#fp').onclick = () => {
     window.__fpEmail = $('#uE').value.trim();
-    try { history.pushState({ fp: 1 }, '', location.pathname + location.search + '#forgot'); } catch (x) {}
+    if (okRoute) { try { history.pushState({ fp: 1 }, '', pathBase + 'forgot'); } catch (x) {} }
     authScreen('fp');
   };
   window.__ready = true; if (window.__early) { const id = window.__early; window.__early = null; const eb = $('#' + id); if (eb) eb.click(); }
 }
-window.addEventListener('popstate', () => { if (!user && !window.__vw) authScreen(location.hash === '#forgot' ? 'fp' : 'in'); });
+window.addEventListener('popstate', () => { if (!user && !window.__vw) authScreen(isFp() ? 'fp' : 'in'); });
 function waitScreen() {
   document.body.classList.remove('in'); $('#side').innerHTML = '';
   app.innerHTML = '<div class="card center"><h2>' + p('Waiting for approval', 'অনুমোদনের অপেক্ষায়') + '</h2><p class="muted">' + p('Your account is not active yet. Ask the manager to approve you in Members, then refresh. Send your UID to the manager if asked:', 'আপনার অ্যাকাউন্ট এখনো সক্রিয় নয়। ম্যানেজারকে "সদস্য" ট্যাবে আপনাকে অনুমোদন করতে বলুন, তারপর রিফ্রেশ করুন। চাইলে নিচের UID ম্যানেজারকে পাঠান:') + '</p><div class="uid">' + esc(user.uid) + '</div><button class="btn btn-primary" onclick="location.reload()">' + p('Refresh', 'রিফ্রেশ') + '</button> <button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>';
@@ -727,7 +729,7 @@ async function makePdf(title, items, file, period, meta) {
   } finally { root.remove(); }
 }
 
-const viewBase = () => { if (!/^https?:$/.test(location.protocol)) return ''; const seg = location.pathname.split('/').filter(Boolean).pop() || ''; return location.origin + (seg in TABS ? pathBase : location.pathname); };
+const viewBase = () => { if (!/^https?:$/.test(location.protocol)) return ''; const seg = location.pathname.split('/').filter(Boolean).pop() || ''; return location.origin + (seg in TABS || seg === 'forgot' ? pathBase : location.pathname); };
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => (b % 36).toString(36)).join('');
 const headH = (t, n) => '<div class="sh">' + (n ? '<span>' + pad(n) + '</span>' : '') + esc(t) + '</div>';
 const tblH = b => {
@@ -921,7 +923,8 @@ if (VID) showReport(VID); else onAuthStateChanged(auth, async u => {
   const quiet = !!(CACHE && u && CACHE.uid === u.uid);
   user = u; if (!quiet) { me = null; isAdmin = false; }
   try { if (u) localStorage.setItem('mm_hint', u.uid); else { localStorage.removeItem('mm_hint'); localStorage.removeItem('mm_c'); localStorage.removeItem('mm_s'); } } catch (e) {}
-  if (!u) { CACHE = null; document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen(location.hash === '#forgot' ? 'fp' : 'in'); }
+  try { if (u) sessionStorage.removeItem('mm_fp'); } catch (x) {}
+  if (!u) { CACHE = null; document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen(isFp() ? 'fp' : 'in'); }
   if (!quiet) ld(35);
   const pMe = getDoc(mref()); pMe.catch(() => {});
   PRE = load(); PRE.catch(() => {});
