@@ -4,11 +4,11 @@
 /* Static hosts (GitHub Pages) serve this file for /app/meals etc. Send the visitor back to the app root and remember the tab.
    The query string (?r=REPORT-KEY) and hash are kept, so online report links still open the report. */
 (function () {
-  var tabs = ['meals', 'bazar', 'costs', 'members', 'pdf', 'monitor', 'account'];
+  var tabs = ['meals', 'bazar', 'costs', 'members', 'pdf', 'monitor', 'account', 'forgot'];
   var parts = location.pathname.replace(/\/+$/, '').split('/'), last = parts.pop();
   if (tabs.indexOf(last) > -1) {
     var isReport = /[?&]r=/.test(location.search);
-    if (!isReport) { try { sessionStorage.setItem('mm_tab', last); } catch (e) {} }
+    if (!isReport) { try { sessionStorage.setItem(last === 'forgot' ? 'mm_fp' : 'mm_tab', last === 'forgot' ? '1' : last); } catch (e) {} }
     location.replace(parts.join('/') + '/' + location.search + location.hash);
   }
 })();
