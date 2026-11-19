@@ -28,6 +28,19 @@ input,select{background:var(--input-bg);border:1px solid var(--border);border-ra
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
 .card h2{margin:0 0 4px;font-size:18px}.card h3{margin:14px 0 8px;font-size:15px}
 .center{max-width:430px;margin:40px auto 0}
+.auth{max-width:380px;margin:40px auto 0;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:22px}
+.au-hd{text-align:center;margin-bottom:16px}
+.au-hd h2{margin:0 0 4px;font-size:20px}.au-hd p{margin:0;color:var(--muted);font-size:13.5px}
+.au-lang{display:block;margin:0 0 6px auto;background:none;border:0;padding:0;color:var(--muted);font-size:12.5px;cursor:pointer;text-decoration:underline}
+.af{margin:0 0 12px}.af label{display:block;font-size:13px;font-weight:600;margin:0 0 4px}
+.afi input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text)}
+.afi input:focus{outline:0;border-color:var(--primary)}
+.au-fp{text-align:right;margin:-4px 0 2px;font-size:13px}.au-fp .lnk,.au-sw .lnk{text-decoration:none}
+.au-btn{width:100%;justify-content:center;padding:10px 16px;border-radius:8px;font-size:14.5px;margin:0}
+.au-or{text-align:center;margin:10px 0;color:var(--muted);font-size:12.5px}
+.au-sw{text-align:center;margin:16px 0 0;font-size:13.5px;color:var(--muted)}
+.au-ok{text-align:center}.au-ok h3{margin:0 0 6px;color:var(--success);font-size:17px}
+@media(max-width:640px){.auth{margin-top:14px}}
 .muted{color:var(--muted);font-size:13.5px}
 .fg{margin:0 0 12px}.fg label{display:block;font-size:13px;font-weight:600;margin:0 0 4px}.fg input,.fg select{width:100%}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-weight:600;font-size:14px}
@@ -157,18 +170,33 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
   var lang = 'bn', hint = '';
   try { lang = localStorage.getItem('mm_lang') || 'bn'; hint = localStorage.getItem('mm_hint') || ''; } catch (e) {}
   function p(e, b, l) { return l === 'bn' ? b : e; }
-  function fg(id, l, type, extra) { return '<div class="fg"><label for="' + id + '">' + l + '</label><input id="' + id + '" type="' + type + '" ' + (extra || '') + '></div>'; }
-  window.__authHTML = function (up, l) {
-    return '<div class="card center"><h2>' + p('Meal Manager', 'মিল ম্যানেজার', l) + '</h2><p class="muted">' + (up ? p('Create a new account', 'নতুন অ্যাকাউন্ট খুলুন', l) : p('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন', l)) + '</p>'
-      + (up ? fg('uN', p('Your name', 'আপনার নাম', l), 'text') : '') + fg('uE', p('Email', 'ইমেইল', l), 'email', 'autocomplete="username" autocapitalize="off"') + fg('uP', p('Password (min 6)', 'পাসওয়ার্ড (কমপক্ষে ৬)', l), 'password', 'autocomplete="' + (up ? 'new' : 'current') + '-password"')
-      + '<div class="msg" id="m"></div><button class="btn btn-primary" id="go">' + (up ? p('Register', 'নিবন্ধন করুন', l) : p('Sign in', 'সাইন ইন', l)) + '</button> <button class="btn" id="gg">' + p('Continue with Google', 'গুগল দিয়ে লগইন', l) + '</button>'
-      + '<p style="margin-bottom:0"><button class="lnk" id="sw">' + (up ? p('Already have an account? Sign in', 'অ্যাকাউন্ট আছে? সাইন ইন', l) : p('New here? Register', 'নতুন? নিবন্ধন করুন', l)) + '</button>' + (up ? '' : ' &nbsp;·&nbsp; <button class="lnk" id="fp">' + p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?', l) + '</button>') + '</p></div>';
+  function af(id, label, type, extra) { return '<div class="af"><label for="' + id + '">' + label + '</label><div class="afi"><input id="' + id + '" type="' + type + '" ' + (extra || '') + '></div></div>'; }
+  /* mode: 'in' (sign in), 'up' (register) or 'fp' (forgot password page) */
+  window.__authHTML = function (mode, l) {
+    var up = mode === 'up', fp = mode === 'fp';
+    var langBtn = '<button type="button" class="au-lang" data-a="lang">' + (l === 'bn' ? 'English' : 'বাংলা') + '</button>';
+    var hd = function (title, sub) { return langBtn + '<div class="au-hd"><h2>' + title + '</h2><p>' + sub + '</p></div>'; };
+    if (fp) {
+      return '<div class="auth">' + hd(p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?', l), p('Enter your email and we will send you a reset link.', 'ইমেইল দিন, আমরা রিসেট লিংক পাঠাব।', l))
+        + '<div id="fpForm">' + af('uE', p('Email', 'ইমেইল', l), 'email', 'autocomplete="username" autocapitalize="off"')
+        + '<div class="msg" id="m"></div><button class="btn btn-primary au-btn" id="fpGo">' + p('Send reset link', 'রিসেট লিংক পাঠান', l) + '</button></div>'
+        + '<div class="au-ok" id="fpOk" style="display:none"><h3>' + p('Check your email', 'ইমেইল দেখুন', l) + '</h3><p class="muted">' + p('Reset link sent. If you do not see it, check spam.', 'রিসেট লিংক পাঠানো হয়েছে। না পেলে স্প্যাম দেখুন।', l) + '</p></div>'
+        + '<p class="au-sw"><button type="button" class="lnk" id="fb">&larr; ' + p('Back to sign in', 'সাইন ইনে ফিরে যান', l) + '</button></p></div>';
+    }
+    return '<div class="auth">' + hd(p('Meal Manager', 'মিল ম্যানেজার', l), up ? p('Create a new account', 'নতুন অ্যাকাউন্ট খুলুন', l) : p('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন', l))
+      + (up ? af('uN', p('Your name', 'আপনার নাম', l), 'text') : '')
+      + af('uE', p('Email', 'ইমেইল', l), 'email', 'autocomplete="username" autocapitalize="off"')
+      + af('uP', p('Password (min 6)', 'পাসওয়ার্ড (কমপক্ষে ৬)', l), 'password', 'autocomplete="' + (up ? 'new' : 'current') + '-password"')
+      + (up ? '' : '<div class="au-fp"><button type="button" class="lnk" id="fp">' + p('Forgot password?', 'পাসওয়ার্ড ভুলে গেছেন?', l) + '</button></div>')
+      + '<div class="msg" id="m"></div><button class="btn btn-primary au-btn" id="go">' + (up ? p('Register', 'নিবন্ধন করুন', l) : p('Sign in', 'সাইন ইন', l)) + '</button>'
+      + '<div class="au-or">' + p('or', 'অথবা', l) + '</div><button class="btn au-btn" id="gg">' + p('Continue with Google', 'গুগল দিয়ে লগইন', l) + '</button>'
+      + '<p class="au-sw">' + (up ? p('Already have an account?', 'অ্যাকাউন্ট আছে?', l) : p('New here?', 'নতুন?', l)) + ' <button type="button" class="lnk" id="sw">' + (up ? p('Sign in', 'সাইন ইন', l) : p('Register', 'নিবন্ধন করুন', l)) + '</button></p></div>';
   };
   /* returning users: keep the page empty for a moment instead of flashing the login form */
   try { var th = localStorage.getItem('mm_theme'); if (th) document.documentElement.setAttribute('data-theme', th); if (localStorage.getItem('mm_open') === '1') document.body.classList.add('open'); } catch (e) {}
   window.__vw = /[?&]r=/.test(location.search);
   if (window.__vw) { window.__ld(8); }
-  else if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(false, lang); window.__staticLogin = true; }
+  else if (!hint) { document.getElementById('app').innerHTML = window.__authHTML(location.hash === '#forgot' ? 'fp' : 'in', lang); window.__staticLogin = true; }
   else {
     /* returning user: paint the last screen (saved HTML) right now, before Firebase has even downloaded */
     try {
@@ -255,9 +283,23 @@ function emsg(e) {
 
 /* ============ login / register ============ */
 function authScreen(mode) {
-  const up = mode === 'up';
-  if (!(window.__staticLogin && !up && $('#go'))) app.innerHTML = window.__authHTML(up, lang);
-  window.__staticLogin = false;
+  const up = mode === 'up', fpm = mode === 'fp';
+  window.__authMode = mode;
+  if (!(window.__staticLogin && (mode === 'in' || fpm) && (fpm ? $('#fpGo') : $('#go')))) app.innerHTML = window.__authHTML(mode, lang);
+  window.__staticLogin = false; window.scrollTo(0, 0);
+  if (fpm) {
+    if (window.__fpEmail) $('#uE').value = window.__fpEmail;
+    const send = async () => {
+      const em = $('#uE').value.trim();
+      if (!em) return setMsg('m', p('Type your email first.', 'আগে ইমেইল লিখুন।'));
+      $('#fpGo').disabled = true; setMsg('m', '');
+      try { await sendPasswordResetEmail(auth, em); $('#fpForm').style.display = 'none'; $('#fpOk').style.display = ''; }
+      catch (e) { $('#fpGo').disabled = false; setMsg('m', emsg(e)); }
+    };
+    $('#fpGo').onclick = send; $('#uE').onkeydown = e => { if (e.key === 'Enter') send(); };
+    $('#fb').onclick = () => { if (location.hash === '#forgot') history.back(); else authScreen('in'); };
+    window.__ready = true; return;
+  }
   const go = async () => {
     const em = $('#uE').value.trim(), pw = $('#uP').value, nm = up ? $('#uN').value.trim() : '';
     if (!em || !pw || (up && !nm)) return setMsg('m', p('Fill in all fields.', 'সব ঘর পূরণ করুন।'));
@@ -270,9 +312,14 @@ function authScreen(mode) {
   $('#go').onclick = go; $('#uP').onkeydown = e => { if (e.key === 'Enter') go(); };
   $('#gg').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { setMsg('m', emsg(e)); } };
   $('#sw').onclick = () => authScreen(up ? 'in' : 'up');
-  if ($('#fp')) $('#fp').onclick = async () => { const em = $('#uE').value.trim(); if (!em) return setMsg('m', p('Type your email first.', 'আগে ইমেইল লিখুন।')); try { await sendPasswordResetEmail(auth, em); setMsg('m', p('Reset link sent to your email.', 'রিসেট লিংক ইমেইলে পাঠানো হয়েছে।'), 1); } catch (e) { setMsg('m', emsg(e)); } };
+  if ($('#fp')) $('#fp').onclick = () => {
+    window.__fpEmail = $('#uE').value.trim();
+    try { history.pushState({ fp: 1 }, '', location.pathname + location.search + '#forgot'); } catch (x) {}
+    authScreen('fp');
+  };
   window.__ready = true; if (window.__early) { const id = window.__early; window.__early = null; const eb = $('#' + id); if (eb) eb.click(); }
 }
+window.addEventListener('popstate', () => { if (!user && !window.__vw) authScreen(location.hash === '#forgot' ? 'fp' : 'in'); });
 function waitScreen() {
   document.body.classList.remove('in'); $('#side').innerHTML = '';
   app.innerHTML = '<div class="card center"><h2>' + p('Waiting for approval', 'অনুমোদনের অপেক্ষায়') + '</h2><p class="muted">' + p('Your account is not active yet. Ask the manager to approve you in Members, then refresh. Send your UID to the manager if asked:', 'আপনার অ্যাকাউন্ট এখনো সক্রিয় নয়। ম্যানেজারকে "সদস্য" ট্যাবে আপনাকে অনুমোদন করতে বলুন, তারপর রিফ্রেশ করুন। চাইলে নিচের UID ম্যানেজারকে পাঠান:') + '</p><div class="uid">' + esc(user.uid) + '</div><button class="btn btn-primary" onclick="location.reload()">' + p('Refresh', 'রিফ্রেশ') + '</button> <button class="btn" data-a="logout">' + p('Sign out', 'সাইন আউট') + '</button></div>';
@@ -320,7 +367,7 @@ document.addEventListener('click', async e => {
   if (a === 'menu' && innerWidth <= 720) document.body.classList.toggle('mopen');
   else if (a === 'mclose') document.body.classList.remove('mopen');
   else if (a === 'menu') { const o = !document.body.classList.contains('open'); document.body.classList.toggle('open', o); try { localStorage.setItem('mm_open', o ? '1' : '0'); } catch (x) {} }
-  else if (a === 'lang') { lang = lang === 'bn' ? 'en' : 'bn'; try { localStorage.setItem('mm_lang', lang); } catch (x) {} if (me) { renderSide(); renderTab(); } else if (user) waitScreen(); else authScreen('in'); }
+  else if (a === 'lang') { lang = lang === 'bn' ? 'en' : 'bn'; try { localStorage.setItem('mm_lang', lang); } catch (x) {} if (me) { renderSide(); renderTab(); } else if (user) waitScreen(); else authScreen(window.__authMode || 'in'); }
   else if (a === 'theme') { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', nx); try { localStorage.setItem('mm_theme', nx); } catch (x) {} }
   else if (a === 'pdf') { const old = b.textContent; b.disabled = true; b.textContent = p('Preparing...', 'তৈরি হচ্ছে...'); try { await exportPdf(); } catch (x) { alert(p('PDF failed: ', 'PDF তৈরি হয়নি: ') + (x && x.message || x)); } b.disabled = false; b.textContent = old; }
   else if (a === 'logout') { try { await signOut(auth); } catch (x) {} }
@@ -874,7 +921,7 @@ if (VID) showReport(VID); else onAuthStateChanged(auth, async u => {
   const quiet = !!(CACHE && u && CACHE.uid === u.uid);
   user = u; if (!quiet) { me = null; isAdmin = false; }
   try { if (u) localStorage.setItem('mm_hint', u.uid); else { localStorage.removeItem('mm_hint'); localStorage.removeItem('mm_c'); localStorage.removeItem('mm_s'); } } catch (e) {}
-  if (!u) { CACHE = null; document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen('in'); }
+  if (!u) { CACHE = null; document.body.classList.remove('in'); $('#side').innerHTML = ''; return authScreen(location.hash === '#forgot' ? 'fp' : 'in'); }
   if (!quiet) ld(35);
   const pMe = getDoc(mref()); pMe.catch(() => {});
   PRE = load(); PRE.catch(() => {});
