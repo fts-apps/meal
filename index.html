@@ -76,6 +76,12 @@ body:not(.open) .nav{justify-content:center;padding:10px 0}
 .app-foot b{color:var(--primary)}
 #mbar,#mov{display:none}
 .ld{text-align:center}.ld .ldt{font-weight:600}.ld .ldt b{color:var(--primary)}.ldbar{height:8px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:12px}.ldbar i{display:block;height:100%;width:0;background:var(--primary);border-radius:99px;transition:width .15s}
+.chip.bad{border-color:var(--danger);color:var(--danger)}
+.mon-bar{height:10px;border-radius:99px;background:var(--border);overflow:hidden;margin:8px 0 4px}.mon-bar i{display:block;height:100%;border-radius:99px;background:var(--success)}.mon-bar.warn i{background:var(--warn)}.mon-bar.bad i{background:var(--danger)}
+.mon-ban{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--success);color:var(--success);background:color-mix(in srgb,var(--success) 9%,transparent);font-weight:600;margin-bottom:16px}
+.mon-ban.warn{border-color:var(--warn);color:var(--warn);background:color-mix(in srgb,var(--warn) 9%,transparent)}.mon-ban.bad{border-color:var(--danger);color:var(--danger);background:color-mix(in srgb,var(--danger) 9%,transparent)}
+.mon-dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:none}
+.mon-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13.5px}
 /* ===== phones / small screens only (desktop layout is untouched) ===== */
 @media(max-width:720px){
 html{-webkit-text-size-adjust:100%}body{-webkit-tap-highlight-color:transparent}
@@ -186,7 +192,7 @@ input,select{font-size:16px;min-height:44px;padding:9px 12px;width:100%}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, orderBy, limit, getCountFromServer, getDocFromServer } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 /* ============ SETTINGS: paste YOUR Firebase web-app config here ============ */
 const firebaseConfig = {
@@ -226,10 +232,11 @@ const ICON = {
   account: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   theme: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   lang: '<path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>',
+  monitor: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
   out: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
 };
 const ico = k => '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICON[k] + '</svg>';
-const TABS = { dash: ['Dashboard', 'ড্যাশবোর্ড'], meals: ['Meals', 'মিল'], bazar: ['Bazar', 'বাজার'], costs: ['Other costs', 'অন্যান্য খরচ'], members: ['Members', 'সদস্য'], pdf: ['PDF report', 'পিডিএফ রিপোর্ট'], account: ['Account', 'অ্যাকাউন্ট'] };
+const TABS = { dash: ['Dashboard', 'ড্যাশবোর্ড'], meals: ['Meals', 'মিল'], bazar: ['Bazar', 'বাজার'], costs: ['Other costs', 'অন্যান্য খরচ'], members: ['Members', 'সদস্য'], pdf: ['PDF report', 'পিডিএফ রিপোর্ট'], monitor: ['Monitor', 'মনিটর'], account: ['Account', 'অ্যাকাউন্ট'] };
 const tt = k => p(TABS[k][0], TABS[k][1]);
 /* clean URLs: /app/ , /app/meals ... (no # or ?). Needs 404.html beside index.html on static hosts */
 const lastSeg = location.pathname.split('/').filter(Boolean).pop() || '';
@@ -298,7 +305,7 @@ async function refresh() {
   document.body.classList.add('in'); renderSide(); renderTab();
 }
 function renderSide() {
-  const keys = Object.keys(TABS);
+  const keys = Object.keys(TABS).filter(k => k !== 'monitor' || isAdmin);   // Monitor tab: manager only
   $('#side').innerHTML = '<div class="sb-h"><button class="burger" data-a="menu" aria-label="Menu"><span></span><span></span><span></span></button><div class="sb-t">' + p('Meal Manager', 'মিল ম্যানেজার') + '</div></div>'
     + '<div class="sb-u" title="' + esc(user.email) + '">' + esc(me.name || user.email) + (isAdmin ? ' (' + p('Manager', 'ম্যানেজার') + ')' : '') + '</div><nav>'
     + keys.map(k => '<a class="nav' + (tab === k ? ' on' : '') + '" href="' + tabUrl(k) + '" data-t="' + k + '">' + ico(k) + '<span>' + esc(tt(k)) + '</span></a>').join('') + '</nav><div class="sb-f">'
@@ -322,9 +329,10 @@ function head(title, noMonth) {
 }
 function bindMonth() { const m = $('#mo'); if (m) m.onchange = async () => { if (!m.value) return; month = m.value; mdate = month === nowM() ? nowD() : month + '-01'; await refresh(); }; }
 function renderTab() {
-  ({ dash: tabDash, meals: tabMeals, bazar: () => tabList('bazar'), costs: () => tabList('costs'), members: tabMembers, pdf: tabPdf, account: tabAccount })[tab]();
+  if (tab === 'monitor' && !isAdmin) { tab = 'dash'; setUrl(); renderSide(); }
+  ({ dash: tabDash, meals: tabMeals, bazar: () => tabList('bazar'), costs: () => tabList('costs'), members: tabMembers, pdf: tabPdf, monitor: tabMonitor, account: tabAccount })[tab]();
   bindMonth(); document.title = tt(tab) + ' - Meal Manager'; const mt = $('#mtitle'); if (mt) mt.textContent = tt(tab);
-  clearTimeout(snapT); snapT = setTimeout(() => { try { if (user && me && month === nowM()) localStorage.setItem('mm_s', JSON.stringify({ uid: user.uid, tab, lang, month, title: tt(tab), side: $('#side').innerHTML, app: app.innerHTML })); } catch (e) {} }, 0);
+  clearTimeout(snapT); snapT = setTimeout(() => { try { if (user && me && month === nowM() && tab !== 'monitor') localStorage.setItem('mm_s', JSON.stringify({ uid: user.uid, tab, lang, month, title: tt(tab), side: $('#side').innerHTML, app: app.innerHTML })); } catch (e) {} }, 0);
 }
 let snapT = 0;
 
@@ -441,6 +449,91 @@ function tabAccount() {
   const saveOwn = async () => { const b = $('#asv'); b.disabled = true; try { await saveName(user.uid, $('#an').value); tabAccount(); setMsg('am', p('Name updated.', 'নাম আপডেট হয়েছে।'), 1); } catch (e) { setMsg('am', e && e.message && !e.code ? e.message : emsg(e)); b.disabled = false; } };
   $('#asv').onclick = saveOwn; $('#an').onkeydown = e => { if (e.key === 'Enter') saveOwn(); };
   $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(user.uid); $('#cp').textContent = p('Copied', 'কপি হয়েছে'); } catch (e) {} };
+}
+
+/* ============ monitor (manager only) ============ */
+/* Firebase web SDK cannot read the real billing/quota numbers (only the console can), so sizes below are ESTIMATES. Limits = free (Spark) plan. */
+const MON = { fsQuota: 1024 * 1024 * 1024, stQuota: 5 * 1024 * 1024 * 1024, docMax: 1048576, dayReads: 50000, cols: ['members', 'meals', 'bazar', 'costs', 'reports', 'admins'], sample: 15 };
+const fmtB = n => { if (!(n > 0)) return '0 B'; if (n < 1024) return Math.round(n) + ' B'; const u = ['KB', 'MB', 'GB', 'TB']; let i = -1; do { n /= 1024; i++; } while (n >= 1024 && i < 3); return (n >= 100 ? Math.round(n) : Math.round(n * 10) / 10) + ' ' + u[i]; };
+const monLvl = pc => pc >= 90 ? 'bad' : pc >= 70 ? 'warn' : 'ok';
+const monPc = v => v < 0.1 ? '<0.1%' : (Math.round(v * 10) / 10) + '%';
+const monChip = st => '<span class="chip' + ({ ok: ' on', warn: ' wait', bad: ' bad' }[st] || '') + '">' + esc({ ok: p('OK', 'ঠিক আছে'), warn: p('Warning', 'সতর্কতা'), bad: p('Problem', 'সমস্যা'), na: p('N/A', 'প্রযোজ্য নয়') }[st]) + '</span>';
+const monBar = pc => '<div class="mon-bar ' + monLvl(pc) + '"><i style="width:' + Math.min(100, Math.max(pc, 0.6)) + '%"></i></div>';
+const monTmo = (pr, ms) => Promise.race([pr, new Promise((_, rj) => setTimeout(() => rj({ code: 'timeout' }), ms))]);
+async function monStorage() {
+  const m = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
+  const st = m.getStorage(fb); let files = 0, bytes = 0, partial = false;
+  const walk = async (r, d) => {
+    const l = await m.listAll(r), room = 300 - files;
+    if (l.items.length > room) partial = true;
+    const sizes = await Promise.all(l.items.slice(0, Math.max(room, 0)).map(it => m.getMetadata(it).then(x => +x.size || 0, () => 0)));
+    sizes.forEach(z => { bytes += z; files++; });
+    for (const pf of l.prefixes) { if (files >= 300 || d >= 4) { partial = true; break; } await walk(pf, d + 1); }
+  };
+  await walk(m.ref(st), 0);
+  return { files, bytes, partial };
+}
+let monRun = 0;
+async function tabMonitor() {
+  if (!isAdmin) return tabDash();
+  const my = ++monRun, live = () => my === monRun && tab === 'monitor';
+  app.innerHTML = head(tt('monitor'), 1) + '<div class="card ld" style="text-align:center"><span class="spin"></span><div class="muted" style="margin-top:8px">' + p('Checking Firebase...', 'ফায়ারবেস পরীক্ষা হচ্ছে...') + '</div></div>';
+  const R = { checks: [], cols: [], reads: 0, st: null, stErr: null }, add = (name, st, detail) => R.checks.push({ name, st, detail });
+  /* internet + login session */
+  add(p('Internet', 'ইন্টারনেট'), navigator.onLine ? 'ok' : 'bad', navigator.onLine ? p('Online', 'অনলাইন') : p('Offline', 'অফলাইন'));
+  try { const r = await auth.currentUser.getIdTokenResult(); add(p('Login session', 'লগইন সেশন'), 'ok', p('Valid, auto-renews (token until ', 'সচল, নিজে নবায়ন হয় (টোকেন ') + new Date(r.expirationTime).toLocaleTimeString() + ')'); }
+  catch (e) { add(p('Login session', 'লগইন সেশন'), 'bad', emsg(e)); }
+  /* firestore reachability + speed */
+  let fsOk = true; const t0 = performance.now();
+  try { await monTmo(getDocFromServer(doc(db, 'members', user.uid)), 15000); R.reads++; const ms = Math.round(performance.now() - t0); add(p('Firestore connection', 'ফায়ারস্টোর সংযোগ'), ms > 2500 ? 'bad' : ms > 1000 ? 'warn' : 'ok', p('Response ', 'সাড়া ') + ms + ' ms'); }
+  catch (e) { fsOk = false; add(p('Firestore connection', 'ফায়ারস্টোর সংযোগ'), 'bad', e && e.code === 'timeout' ? p('No response in 15 s', '১৫ সেকেন্ডেও সাড়া নেই') : emsg(e)); }
+  /* firestore size estimate: count + small sample per collection */
+  if (fsOk) {
+    const one = async c => {
+      const cr = collection(db, c); let n = 0, tot = 0, smp = 0, mx = 0, err = '';
+      try {
+        n = (await monTmo(getCountFromServer(cr), 15000)).data().count; R.reads += Math.max(1, Math.ceil(n / 1000));
+        if (n) { const sn = await monTmo(getDocs(query(cr, limit(MON.sample))), 15000); R.reads += sn.size; sn.docs.forEach(d => { const b = new TextEncoder().encode(JSON.stringify(d.data())).length + c.length + d.id.length + 32; tot += b; smp++; if (b > mx) mx = b; }); }
+      } catch (e) { err = e && e.code === 'permission-denied' ? p('No permission', 'অনুমতি নেই') : emsg(e); }
+      return { c, n, avg: smp ? tot / smp : 0, mx, err, est: smp ? n * (tot / smp) : 0 };
+    };
+    R.cols = await Promise.all(MON.cols.map(one));
+    const bad = R.cols.filter(x => x.err && x.c !== 'admins');
+    if (bad.length) add(p('Firestore rules', 'ফায়ারস্টোর রুলস'), 'warn', bad.map(x => x.c + ': ' + x.err).join(', '));
+    else add(p('Firestore rules', 'ফায়ারস্টোর রুলস'), 'ok', p('Manager can read all collections', 'ম্যানেজার সব কালেকশন পড়তে পারছে'));
+    const mx = Math.max.apply(null, R.cols.map(x => x.mx).concat([0])), mxc = R.cols.find(x => x.mx === mx && mx > 0);
+    add(p('Largest document', 'সবচেয়ে বড় ডকুমেন্ট'), monLvl(mx / MON.docMax * 100), fmtB(mx) + (mxc ? ' (' + mxc.c + ')' : '') + p(' of 1 MB limit', ' / সীমা ১ MB'));
+  }
+  /* cloud storage */
+  try { R.st = await monTmo(monStorage(), 20000); add(p('Cloud Storage', 'ক্লাউড স্টোরেজ'), 'ok', p('Reachable', 'সংযোগ ঠিক আছে')); }
+  catch (e) {
+    const c = (e && e.code) || ''; R.stErr = c === 'storage/unauthorized' || c === 'storage/unauthenticated' ? p('Storage rules do not allow listing files (or Storage is not used). Allow read/list for the manager to see usage.', 'স্টোরেজ রুলস ফাইল লিস্ট করতে দিচ্ছে না (অথবা স্টোরেজ ব্যবহার হচ্ছে না)। ব্যবহার দেখতে ম্যানেজারের জন্য read/list চালু করুন।')
+      : c === 'timeout' ? p('No response in 20 s', '২০ সেকেন্ডেও সাড়া নেই') : c === 'storage/bucket-not-found' || c === 'storage/project-not-found' ? p('Storage is not set up for this project.', 'এই প্রজেক্টে স্টোরেজ চালু করা নেই।') : emsg(e);
+    add(p('Cloud Storage', 'ক্লাউড স্টোরেজ'), 'na', R.stErr);
+  }
+  /* this device */
+  try { if (navigator.storage && navigator.storage.estimate) { const q = await navigator.storage.estimate(); add(p('This device cache', 'এই ডিভাইসের ক্যাশ'), 'ok', fmtB(q.usage || 0) + (q.quota ? p(' of ', ' / ') + fmtB(q.quota) : '')); } } catch (e) {}
+  if (!live()) return;
+  /* paint */
+  const est = sum(R.cols, x => x.est), docs = sum(R.cols, x => x.n), fsPc = est / MON.fsQuota * 100, stPc = R.st ? R.st.bytes / MON.stQuota * 100 : 0;
+  const sts = R.checks.map(x => x.st).concat([fsPc ? monLvl(fsPc) : 'ok', monLvl(stPc)]), worst = sts.indexOf('bad') >= 0 ? 'bad' : sts.indexOf('warn') >= 0 ? 'warn' : 'ok';
+  const ban = { ok: p('Everything looks healthy', 'সব ঠিক আছে'), warn: p('Some things need attention', 'কিছু বিষয়ে নজর দিন'), bad: p('Problems found', 'সমস্যা পাওয়া গেছে') }[worst];
+  const stat = (l, v) => '<div class="stat"><small>' + esc(l) + '</small><b>' + esc(v) + '</b></div>';
+  app.innerHTML = head(tt('monitor'), 1)
+    + '<div class="mon-ban ' + worst + '"><span class="mon-dot"></span><span>' + esc(ban) + '</span></div>'
+    + '<div class="grid">' + stat(p('Firestore data (est.)', 'ফায়ারস্টোর ডেটা (আনু.)'), fmtB(est)) + stat(p('Total documents', 'মোট ডকুমেন্ট'), money(docs)) + stat(p('Storage files', 'স্টোরেজ ফাইল'), R.st ? money(R.st.files) + (R.st.partial ? '+' : '') : '—') + stat(p('Storage used', 'স্টোরেজ ব্যবহার'), R.st ? fmtB(R.st.bytes) : '—') + '</div>'
+    + '<div class="card"><h3 style="margin-top:0">' + p('Firestore capacity (estimate)', 'ফায়ারস্টোর ক্যাপাসিটি (আনুমানিক)') + '</h3>' + monBar(fsPc)
+    + '<div class="mon-row"><span>' + fmtB(est) + ' / ' + fmtB(MON.fsQuota) + '</span><b>' + monPc(fsPc) + '</b></div>'
+    + '<div class="tw" style="margin-top:12px"><table class="tbl"><thead><tr><th>' + p('Collection', 'কালেকশন') + '</th><th class="n">' + p('Documents', 'ডকুমেন্ট') + '</th><th class="n">' + p('Avg size', 'গড় সাইজ') + '</th><th class="n">' + p('Est. size', 'আনু. সাইজ') + '</th></tr></thead><tbody>'
+    + R.cols.map(x => '<tr><td>' + esc(x.c) + '</td><td class="n">' + (x.err ? '—' : money(x.n)) + '</td><td class="n">' + (x.err ? esc(x.err) : fmtB(x.avg)) + '</td><td class="n">' + (x.err ? '—' : fmtB(x.est)) + '</td></tr>').join('') + '</tbody></table></div></div>'
+    + '<div class="card"><h3 style="margin-top:0">' + p('Cloud Storage capacity', 'ক্লাউড স্টোরেজ ক্যাপাসিটি') + '</h3>'
+    + (R.st ? monBar(stPc) + '<div class="mon-row"><span>' + fmtB(R.st.bytes) + ' / ' + fmtB(MON.stQuota) + ' &bull; ' + money(R.st.files) + (R.st.partial ? '+' : '') + p(' files', ' ফাইল') + '</span><b>' + monPc(stPc) + '</b></div>' + (R.st.partial ? '<p class="muted" style="margin:8px 0 0">' + p('Only the first 300 files were counted.', 'শুধু প্রথম ৩০০টি ফাইল গোনা হয়েছে।') + '</p>' : '') : '<p class="muted" style="margin:0">' + esc(R.stErr || '') + '</p>') + '</div>'
+    + '<div class="card"><h3 style="margin-top:0">' + p('Health checks', 'হেলথ চেক') + '</h3><div class="tw"><table class="tbl"><thead><tr><th>' + p('Check', 'পরীক্ষা') + '</th><th>' + p('Status', 'অবস্থা') + '</th><th>' + p('Details', 'বিবরণ') + '</th></tr></thead><tbody>'
+    + R.checks.map(x => '<tr><td>' + esc(x.name) + '</td><td>' + monChip(x.st) + '</td><td>' + esc(x.detail) + '</td></tr>').join('') + '</tbody></table></div></div>'
+    + '<div class="card"><button class="btn btn-primary" id="monGo">' + p('Check again', 'আবার চেক করুন') + '</button> <a class="btn" target="_blank" rel="noopener" href="https://console.firebase.google.com/project/' + firebaseConfig.projectId + '/usage">' + p('Open Firebase usage', 'ফায়ারবেস ইউসেজ দেখুন') + '</a>'
+    + '<p class="muted" style="margin:12px 0 0">' + p('Last checked ' + new Date().toLocaleTimeString() + '. This check used about ' + R.reads + ' reads (free plan: ' + money(MON.dayReads) + ' reads/day). Sizes are estimates from document counts and a small sample; limits assume the free Spark plan. Exact daily reads/writes and billing are only visible in the Firebase console.',
+      'সর্বশেষ চেক ' + new Date().toLocaleTimeString() + '। এই চেকে প্রায় ' + R.reads + 'টি রিড খরচ হয়েছে (ফ্রি প্ল্যানে দিনে ' + money(MON.dayReads) + ')। সাইজ আনুমানিক — ডকুমেন্ট সংখ্যা ও ছোট নমুনা থেকে হিসাব; সীমা ফ্রি (Spark) প্ল্যান ধরে। দৈনিক রিড/রাইট ও বিলিংয়ের সঠিক হিসাব শুধু ফায়ারবেস কনসোলে পাওয়া যায়।') + '</p></div>';
+  const g = $('#monGo'); if (g) g.onclick = () => tabMonitor();
 }
 
 const pkOpt = (v, t, s, ic, on) => '<button type="button" class="pko' + (on ? ' on' : '') + '" data-pk="' + v + '" role="radio" aria-checked="' + on + '"><span class="pi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg></span><span><span class="pt">' + esc(t) + '</span><span class="ps">' + esc(s) + '</span></span><span class="pc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span></button>';
@@ -723,7 +816,7 @@ function saveCache() { try { if (user && me && month === nowM()) localStorage.se
     if (!h || h === '1' || !c || c.uid !== h || c.month !== nowM() || !c.me || !(c.isAdmin || c.me.status === 'active')) return;
     CACHE = c; user = { uid: c.uid, email: c.email }; me = c.me; isAdmin = c.isAdmin; S = c.S; month = c.month;
     let t0 = ''; try { t0 = sessionStorage.getItem('mm_tab') || ''; sessionStorage.removeItem('mm_tab'); } catch (e) {}
-    tab = t0 || lastSeg; if (!TABS[tab]) tab = 'dash'; setUrl();
+    tab = t0 || lastSeg; if (!TABS[tab] || (tab === 'monitor' && !isAdmin)) tab = 'dash'; setUrl();
     document.body.classList.add('in'); renderSide(); renderTab();
   } catch (e) { CACHE = null; }
 })();
@@ -752,7 +845,7 @@ if (VID) showReport(VID); else onAuthStateChanged(auth, async u => {
     return;
   }
   let t0 = ''; try { t0 = sessionStorage.getItem('mm_tab') || ''; sessionStorage.removeItem('mm_tab'); } catch (e) {}
-  tab = t0 || lastSeg; if (!TABS[tab]) tab = 'dash'; setUrl();
+  tab = t0 || lastSeg; if (!TABS[tab] || (tab === 'monitor' && !isAdmin)) tab = 'dash'; setUrl();
   await refresh();
 });
 </script>
