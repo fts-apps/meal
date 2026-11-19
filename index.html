@@ -42,7 +42,7 @@ input,select{background:var(--input-bg);border:1px solid var(--border);border-ra
 .stat{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel)}
 .stat small{display:block;color:var(--muted);font-size:12.5px}.stat b{display:block;font-size:20px;margin-top:2px}
 .frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end;margin-bottom:12px}
-.pk{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pko{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border:2px solid var(--border);border-radius:12px;background:var(--panel);cursor:pointer;transition:border-color .15s,background .15s}.pko:hover{border-color:var(--primary)}.pko .pi{flex:none;width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted)}.pko .pt{display:block;font-weight:700;font-size:14.5px;line-height:1.3}.pko .ps{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}.pko .pc{flex:none;margin-left:auto;width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:transparent}.pko.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 9%,var(--panel))}.pko.on .pi{background:var(--primary);color:#fff}.pko.on .pc{background:var(--primary);border-color:var(--primary);color:#fff}@media(max-width:480px){.pk{grid-template-columns:1fr}}
+.seg{display:flex;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:12px}.seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}.seg button:hover{color:var(--text,inherit)}.seg button.on{background:var(--panel);color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.12)}.seghint{margin:8px 2px 0;font-size:12.5px;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:7px 14px;border:1.5px solid var(--border);border-radius:999px;background:var(--panel);color:inherit;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s}.chip:hover{border-color:var(--primary)}.chip.on{background:var(--primary);border-color:var(--primary);color:#fff}@media(max-width:480px){.seg button svg{display:none}}
 .tw{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
 .tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
 .tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
@@ -396,15 +396,16 @@ function tabMeals() {
 }
 const KIND = { bazar: { who: 1, note: ['Item / note', 'কী কেনা হয়েছে'] }, costs: { who: 0, note: ['Title (rent, gas, wifi...)', 'খাত (ভাড়া, গ্যাস, ওয়াইফাই...)'] } };
 function tabList(k) {
-  const K = KIND[k], rows = S[k].slice().sort((a, b) => b.date.localeCompare(a.date)), tot = sum(rows, x => x.amount), ms = actives();
+  const K = KIND[k], rows = S[k].slice().sort((a, b) => b.date.localeCompare(a.date)).filter(x => !(k === 'bazar' && bzF) || x.uid === bzF), tot = sum(rows, x => x.amount), ms = actives();
   const dd = month === nowM() ? nowD() : month + '-01';
   app.innerHTML = head(tt(k))
     + (isAdmin ? '<div class="card"><div class="frm"><div class="fg" style="margin:0"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="fD" value="' + dd + '" ' + dateAttr() + '></div>'
       + (K.who ? '<div class="fg" style="margin:0"><label>' + p('Bought by', 'কে বাজার করেছেন') + '</label><select id="fW">' + ms.map(m => '<option value="' + m.id + '">' + esc(m.name) + '</option>').join('') + '</select></div>' : '')
       + '<div class="fg" style="margin:0"><label>' + p('Amount', 'টাকা') + '</label><input type="number" id="fA" min="0" step="any"></div><div class="fg" style="margin:0"><label>' + p(K.note[0], K.note[1]) + '</label><input type="text" id="fN"></div><button class="btn btn-primary" id="ad">' + p('Add', 'যোগ করুন') + '</button></div><div class="msg" id="m"></div>' + (k === 'bazar' ? '<p class="muted" style="margin:0">' + p('The amount is counted as this member\'s contribution.', 'এই টাকা যিনি বাজার করেছেন তার জমা হিসেবে ধরা হবে।') + '</p>' : '') + '</div>' : '')
-    + '<div class="card"><div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (K.who ? '<th>' + p('Bought by', 'কে বাজার করেছেন') + '</th>' : '') + '<th>' + p('Note', 'বিবরণ') + '</th><th class="n">' + p('Amount', 'টাকা') + '</th>' + (isAdmin ? '<th class="no"></th>' : '') + '</tr></thead><tbody>'
+    + '<div class="card">' + (k === 'bazar' ? '<div class="fg" style="max-width:260px"><label>' + p('Show member', 'সদস্য অনুযায়ী দেখুন') + '</label><select id="bf"><option value="">' + p('All members', 'সব সদস্য') + '</option>' + S.members.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => '<option value="' + m.id + '"' + (m.id === bzF ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') + '</select></div>' : '') + '<div class="tw"><table class="tbl"><thead><tr><th>' + p('Date', 'তারিখ') + '</th>' + (K.who ? '<th>' + p('Bought by', 'কে বাজার করেছেন') + '</th>' : '') + '<th>' + p('Note', 'বিবরণ') + '</th><th class="n">' + p('Amount', 'টাকা') + '</th>' + (isAdmin ? '<th class="no"></th>' : '') + '</tr></thead><tbody>'
     + (rows.length ? rows.map(x => '<tr><td>' + esc(x.date) + '</td>' + (K.who ? '<td>' + esc(nameOf(x.uid)) + '</td>' : '') + '<td>' + esc(x.note || '') + '</td><td class="n">' + money(x.amount) + '</td>' + (isAdmin ? '<td class="n no"><button class="btn btn-sm btn-danger" data-del="' + x.id + '">' + p('Delete', 'মুছুন') + '</button></td>' : '') + '</tr>').join('') : '<tr><td colspan="5" class="muted">' + p('Nothing yet.', 'এখনো কিছু নেই।') + '</td></tr>')
-    + '</tbody></table></div><p style="margin:10px 0 0"><b>' + p('Total', 'মোট') + ': ' + money(tot) + '</b></p></div>';
+    + '</tbody></table></div><p style="margin:10px 0 0"><b>' + p('Total', 'মোট') + ': ' + money(tot) + '</b>' + (k === 'bazar' ? ' <span class="muted">(' + rows.length + ' ' + p('entries', 'বার') + ')</span>' : '') + '</p></div>';
+  if (k === 'bazar') { const bf = $('#bf'); if (bf) bf.onchange = () => { bzF = bf.value; renderTab(); }; }
   if (!isAdmin) return;
   $('#ad').onclick = async () => {
     const date = $('#fD').value, amount = +$('#fA').value, note = $('#fN').value.trim(), uid = K.who ? $('#fW').value : '';
@@ -417,6 +418,7 @@ function tabList(k) {
   };
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm(p('Delete this entry?', 'এই এন্ট্রি মুছবেন?'))) return; try { await deleteDoc(doc(db, k, b.dataset.del)); await load(); renderTab(); bindMonth(); } catch (e) { alert(emsg(e)); } });
 }
+let bzF = '';
 let editId = null;
 const saveName = async (id, val) => {
   const nm = String(val || '').replace(/\s+/g, ' ').trim();
@@ -552,20 +554,27 @@ async function tabMonitor() {
   const sb = $('#monSt'); if (sb) sb.onclick = async () => { sb.disabled = true; sb.textContent = p('Checking...', 'যাচাই হচ্ছে...'); await monCheckStorage(); if (live()) tabMonitor(); };
 }
 
-const pkOpt = (v, t, s, ic, on) => '<button type="button" class="pko' + (on ? ' on' : '') + '" data-pk="' + v + '" role="radio" aria-checked="' + on + '"><span class="pi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg></span><span><span class="pt">' + esc(t) + '</span><span class="ps">' + esc(s) + '</span></span><span class="pc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span></button>';
+const pkOpt = (v, t, ic, on) => '<button type="button" class="' + (on ? 'on' : '') + '" data-pk="' + v + '" role="radio" aria-checked="' + on + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg>' + esc(t) + '</button>';
 function tabPdf() {
   const d0 = (mdate && mdate.slice(0, 7) === month) ? mdate : month + '-01';
-  app.innerHTML = head(tt('pdf')) + '<div class="card"><h3 style="margin-top:0">' + p('Download PDF', 'PDF ডাউনলোড') + '</h3><div class="fg" style="margin:0 0 12px"><label>' + p('Report type', 'রিপোর্টের ধরন') + '</label><div class="pk" role="radiogroup">'
-    + pkOpt('month', p('Month wise', 'মাসভিত্তিক'), p('Full month: ', 'পুরো মাস: ') + monthLabel(month), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h8M8 18h8"/>', true)
-    + pkOpt('day', p('Day wise', 'দিনভিত্তিক'), p('Pick one date', 'একটি তারিখ বেছে নিন'), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/>', false)
-    + '</div><input type="hidden" id="pk" value="month"></div>'
+  app.innerHTML = head(tt('pdf')) + '<div class="card"><h3 style="margin-top:0">' + p('Download PDF', 'PDF ডাউনলোড') + '</h3><div class="fg" style="margin:0 0 12px"><label>' + p('Report type', 'রিপোর্টের ধরন') + '</label><div class="seg" role="radiogroup">'
+    + pkOpt('month', p('Month', 'মাস'), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>', true)
+    + pkOpt('day', p('Day', 'দিন'), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/>', false)
+    + pkOpt('member', p('Member', 'সদস্য'), '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', false)
+    + '</div><p class="seghint" id="pkh">' + p('Full month: ', 'পুরো মাস: ') + monthLabel(month) + '</p><input type="hidden" id="pk" value="month"></div>'
+    + '<div class="fg" style="margin:0 0 12px;display:none" id="pmw"><label>' + p('Member', 'সদস্য') + '</label><div class="chips">' + actives().map(m => '<button type="button" class="chip' + (user && m.id === user.uid ? ' on' : '') + '" data-pm="' + m.id + '">' + esc(m.name) + '</button>').join('') + '</div><input type="hidden" id="pm" value="' + ((actives().find(m => user && m.id === user.uid) || actives()[0] || {}).id || '') + '"></div>'
     + '<div class="fg" style="margin:0 0 12px;display:none;max-width:260px" id="pdw"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="pd" value="' + d0 + '" ' + dateAttr() + '></div>'
-    + '<p class="muted">' + p('Month wise: summary, day-wise meals, bazar details and other costs with totals, then a separate page for member-wise totals. Day wise: meals, bazar and costs of the chosen date.', 'মাসভিত্তিক: সারসংক্ষেপ, দিনভিত্তিক মিল, বাজারের বিবরণ ও অন্যান্য খরচ (মোটসহ), এবং আলাদা পাতায় সদস্যভিত্তিক মোট হিসাব। দিনভিত্তিক: নির্বাচিত তারিখের মিল, বাজার ও খরচ।') + '</p><button class="btn btn-primary" data-a="pdf">' + p('Download PDF', 'PDF ডাউনলোড') + '</button></div>'
+    + '<button class="btn btn-primary" data-a="pdf">' + p('Download PDF', 'PDF ডাউনলোড') + '</button></div>'
     + '<div class="card"><h3 style="margin-top:0">' + p('Online reports (QR links)', 'অনলাইন রিপোর্ট (QR লিংক)') + '</h3><p class="muted">' + p('Every PDF you download is also saved online. Open or copy its link here.', 'প্রতিটি PDF ডাউনলোডের সাথে রিপোর্টটি অনলাইনেও সেভ হয়। এখান থেকে লিংক খুলুন বা কপি করুন।') + '</p><div id="rl"><p class="muted">' + p('Loading...', 'লোড হচ্ছে...') + '</p></div></div>';
   app.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => {
     const v = b.dataset.pk; $('#pk').value = v;
     app.querySelectorAll('[data-pk]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on ? 'true' : 'false'); });
-    $('#pdw').style.display = v === 'day' ? '' : 'none';
+    $('#pdw').style.display = v === 'day' ? '' : 'none'; $('#pmw').style.display = v === 'member' ? '' : 'none';
+    $('#pkh').textContent = v === 'month' ? p('Full month: ', 'পুরো মাস: ') + monthLabel(month) : v === 'day' ? p('Pick one date', 'একটি তারিখ বেছে নিন') : p('One member only', 'একজন সদস্যের হিসাব');
+  });
+  app.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
+    $('#pm').value = b.dataset.pm;
+    app.querySelectorAll('[data-pm]').forEach(x => x.classList.toggle('on', x === b));
   });
   loadReports();
 }
@@ -692,7 +701,7 @@ const tblH = b => {
   return h + '</tbody></table></div>';
 };
 
-function buildReport(kind, d, genT) {
+function buildReport(kind, d, genT, uid) {
   const ms = actives(), c = calc(), loc = lang === 'bn' ? 'bn-BD' : 'en-GB', items = [];
   const tk = v => '৳' + money(v), fx = v => String(Math.round(v * 100) / 100);
   const dd = x => { const a = x.split('-').map(Number); return new Date(a[0], a[1] - 1, a[2]); };
@@ -705,6 +714,26 @@ function buildReport(kind, d, genT) {
   const bazarRows = list => list.slice().sort(byDate).map((x, i) => [String(i + 1), esc(fd(x.date)), esc(x.note || '-'), esc(nameOf(x.uid)), tk(x.amount)]);
   const costRows = list => list.slice().sort(byDate).map((x, i) => [String(i + 1), esc(fd(x.date)), esc(x.note || '-'), tk(x.amount)]);
   const info = (type, per, id) => ({ type: 'info', items: [[p('Report type', 'রিপোর্টের ধরন'), type], [p('Period', 'সময়কাল'), per], [p('Document ID', 'ডকুমেন্ট নং'), id], [p('Generated on', 'তৈরির সময়'), genT], [p('Prepared by', 'প্রস্তুতকারক'), (me && me.name) || (user && user.email) || ''], [p('Active members', 'সক্রিয় সদস্য'), String(ms.length)]] });
+
+  if (kind === 'member') {
+    const mem = S.members.find(x => x.id === uid) || { name: '?' }, ag = aggOf();
+    const mb = S.bazar.filter(x => x.uid === uid).sort(byDate), mm = S.meals.filter(x => x.uid === uid).sort(byDate);
+    const meals = sum(mm, mv), paid = sum(mb, x => x.amount), cost = meals * ag.rate, bal = paid - cost - ag.share;
+    const id = 'MM-U-' + month.replace('-', '') + '-' + String(uid).slice(0, 5).toUpperCase();
+    items.push({ type: 'info', items: [[p('Report type', 'রিপোর্টের ধরন'), p('Member-wise report', 'সদস্যভিত্তিক রিপোর্ট')], [p('Member', 'সদস্য'), mem.name || '?'], [p('Period', 'সময়কাল'), monthLabel(month)], [p('Document ID', 'ডকুমেন্ট নং'), id], [p('Generated on', 'তৈরির সময়'), genT], [p('Prepared by', 'প্রস্তুতকারক'), (me && me.name) || (user && user.email) || '']] });
+    items.push({ type: 'tiles', title: p('Member summary', 'সদস্যের সারসংক্ষেপ'), items: [[p('Total meals', 'মোট মিল'), money(meals)], [p('Meal cost', 'মিল খরচ'), tk(cost)], [p('Other share', 'অন্য খরচের ভাগ'), tk(ag.share)], [p('Bazar paid', 'বাজারে খরচ'), tk(paid)], [bal >= 0 ? p('Receivable', 'পাবেন') : p('Payable', 'দেবেন'), tk(Math.abs(bal))], [p('Meal rate', 'মিল রেট'), tk(ag.rate)]] });
+    const big = mb.reduce((a, x) => (+x.amount || 0) > a ? (+x.amount || 0) : a, 0);
+    items.push({ type: 'kv', title: p('Highlights', 'মূল তথ্য'), items: [[p('Bazar times', 'বাজার করেছেন (বার)'), String(mb.length)], [p('Average per bazar', 'প্রতি বাজারে গড়'), mb.length ? tk(paid / mb.length) : '-'], [p('Highest single bazar', 'সর্বোচ্চ একবারের বাজার'), mb.length ? tk(big) : '-'], [p('Meal days', 'মিলের দিন'), String(new Set(mm.filter(x => mv(x) > 0).map(x => x.date)).size)]] });
+    items.push({ type: 'list', title: p('Bazar history (date-wise, with notes)', 'বাজারের ইতিহাস (তারিখ অনুযায়ী, বিবরণসহ)'), empty: p('No bazar recorded for this member', 'এই সদস্যের কোনো বাজার নেই'), cols: costCols, rows: mb.map((x, i) => [String(i + 1), esc(fd(x.date)) + '<small>' + esc(wd(x.date)) + '</small>', esc(x.note || '-'), tk(x.amount)]), foot: mb.length ? [p('Total bazar paid', 'মোট বাজারে খরচ'), tk(paid)] : null });
+    const byD = {}; mb.forEach(x => { (byD[x.date] = byD[x.date] || []).push(x); });
+    const ds = Object.keys(byD).sort();
+    items.push({ type: 'list', title: p('Date-wise bazar summary', 'তারিখ অনুযায়ী বাজারের সারসংক্ষেপ'), empty: p('No bazar recorded for this member', 'এই সদস্যের কোনো বাজার নেই'), cols: [SL, [p('Date', 'তারিখ'), '34%'], [p('Times', 'কতবার'), '24%', 'r'], [p('Total', 'মোট'), '36%', 'r']], rows: ds.map((x, i) => [String(i + 1), esc(fd(x)), String(byD[x].length), tk(sum(byD[x], y => y.amount))]), foot: ds.length ? [p('Total bazar paid', 'মোট বাজারে খরচ'), tk(paid)] : null });
+    items.push({ type: 'list', title: p('Meals', 'মিলের তালিকা'), empty: p('No meals recorded for this member', 'এই সদস্যের কোনো মিল নেই'), cols: [SL, [p('Date', 'তারিখ'), '60%'], [p('Meals', 'মিল'), '34%', 'r']], rows: mm.filter(x => mv(x) > 0).map((x, i) => [String(i + 1), esc(fd(x.date)) + '<small>' + esc(wd(x.date)) + '</small>', money(mv(x))]), foot: meals ? [p('Total meals', 'মোট মিল'), money(meals)] : null });
+    items.push({ type: 'note', text: p('Meal rate = total bazar ÷ total meals (of all members). Meal cost = meals × meal rate. Balance = bazar paid − meal cost − other share. Receivable = gets back, Payable = must pay.', 'মিল রেট = মোট বাজার ÷ মোট মিল (সব সদস্যের)। মিল খরচ = মিল × মিল রেট। ব্যালেন্স = বাজারে খরচ − মিল খরচ − অন্য খরচের ভাগ। পাবেন = ফেরত পাবেন, দেবেন = দিতে হবে।') });
+    const safe = String(mem.name || 'member').replace(/[^\w\u0980-\u09FF]+/g, '_').slice(0, 24);
+    return { items, id, title: p('Member-wise report', 'সদস্যভিত্তিক রিপোর্ট') + ' - ' + (mem.name || ''), period: monthLabel(month), file: 'Meal-member-' + month + '-' + safe + '.pdf',
+      facts: ['MEAL MANAGER - MEMBER', 'ID: ' + id, 'Period: ' + month, 'Meals: ' + fx(meals), 'Bazar paid: ' + fx(paid), 'Balance: ' + fx(bal)] };
+  }
 
   if (kind === 'day') {
     const ml = S.meals.filter(x => x.date === d), bz = S.bazar.filter(x => x.date === d), oc = S.costs.filter(x => x.date === d);
@@ -745,7 +774,17 @@ function buildReport(kind, d, genT) {
 }
 
 /* plain data copy of the report, saved online so the QR link can show it */
-const snapData = (kind, d) => {
+const aggOf = () => { if (S.agg) return S.agg; const c = calc(); return { totM: c.totM, bz: c.bz, oc: c.oc, rate: c.rate, share: c.share, nm: c.rows.length }; };
+const snapData = (kind, d, uid) => {
+  if (kind === 'member') {
+    const nt0 = s => String(s || '').slice(0, 200);
+    return {
+      members: S.members.filter(m => m.id === uid).map(m => ({ id: m.id, name: nt0(m.name), status: m.status || '' })),
+      meals: S.meals.filter(x => x.uid === uid).map(x => { const o = { date: x.date, uid: x.uid }; ['n', 'b', 'l', 'd'].forEach(f => { if (x[f] != null) o[f] = +x[f] || 0; }); return o; }),
+      bazar: S.bazar.filter(x => x.uid === uid).map(x => ({ date: x.date, uid: x.uid, amount: +x.amount || 0, note: nt0(x.note) })),
+      costs: [], agg: aggOf()
+    };
+  }
   const k = kind === 'day' ? (x => x.date === d) : (() => true), nt = s => String(s || '').slice(0, 200);
   return {
     members: S.members.map(m => ({ id: m.id, name: nt(m.name), status: m.status || '' })),
@@ -756,10 +795,11 @@ const snapData = (kind, d) => {
 };
 
 async function exportPdf() {
-  const kind = ($('#pk') || {}).value || 'month', d = ($('#pd') || {}).value;
+  const kind = ($('#pk') || {}).value || 'month', d = ($('#pd') || {}).value, muid = kind === 'member' ? (($('#pm') || {}).value || '') : '';
+  if (kind === 'member' && !muid) throw new Error(p('Pick a member.', 'একজন সদস্য বেছে নিন।'));
   if (kind === 'day' && (!d || d.slice(0, 7) !== month)) throw new Error(p('Pick a date inside the selected month.', 'নির্বাচিত মাসের ভেতরের একটি তারিখ দিন।'));
   const genT = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const rep = buildReport(kind, d, genT);
+  const rep = buildReport(kind, d, genT, muid);
   let qrText = rep.facts.join('\n'), online = false, warn = '';
   const base = viewBase();
   if (!base) warn = p('The QR holds plain text because this page is not opened from your website (https).', 'এই পেজ ওয়েবসাইট (https) থেকে খোলা নয়, তাই QR-এ লিংকের বদলে লেখা আকারে হিসাব আছে।');
@@ -767,7 +807,7 @@ async function exportPdf() {
     const key = rep.id + '-' + token();
     try {
       await Promise.race([
-        setDoc(doc(db, 'reports', key), { kind, month, date: kind === 'day' ? d : '', rid: rep.id, lang, by: user.uid, name: (me && me.name) || '', genT, createdAt: serverTimestamp(), data: snapData(kind, d) }),
+        setDoc(doc(db, 'reports', key), { kind, month, date: kind === 'day' ? d : '', rid: rep.id, lang, by: user.uid, name: (me && me.name) || '', genT, createdAt: serverTimestamp(), data: snapData(kind, d, muid), uid: muid }),
         new Promise((_, rj) => setTimeout(() => rj(new Error('timeout')), 8000))
       ]);
       qrText = base + '?r=' + key; online = true;
@@ -803,7 +843,7 @@ async function showReport(key) {
   }
   lang = snap.lang === 'en' ? 'en' : 'bn'; S = snap.data; month = snap.month; me = { name: snap.name }; user = { email: '' };
   const draw = () => {
-    const rep = buildReport(snap.kind, snap.date, snap.genT); let n = 0;
+    const rep = buildReport(snap.kind, snap.date, snap.genT, snap.uid); let n = 0;
     const body = rep.items.map(b => {
       if (b.type === 'info') return kvT(b.items);
       if (b.type === 'note') return '<div class="note">' + esc(b.text) + '</div>';
