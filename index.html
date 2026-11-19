@@ -42,7 +42,7 @@ input,select{background:var(--input-bg);border:1px solid var(--border);border-ra
 .stat{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel)}
 .stat small{display:block;color:var(--muted);font-size:12.5px}.stat b{display:block;font-size:20px;margin-top:2px}
 .frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end;margin-bottom:12px}
-.seg{display:flex;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:12px}.seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}.seg button:hover{color:var(--text,inherit)}.seg button.on{background:var(--panel);color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.12)}.seghint{margin:8px 2px 0;font-size:12.5px;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:7px 14px;border:1.5px solid var(--border);border-radius:999px;background:var(--panel);color:inherit;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s}.chip:hover{border-color:var(--primary)}.chip.on{background:var(--primary);border-color:var(--primary);color:#fff}@media(max-width:480px){.seg button svg{display:none}}
+select.sel{width:100%;appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:pointer;padding:11px 38px 11px 12px;font-weight:600;color:var(--text);background-color:var(--input-bg);background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 19px) 50%,calc(100% - 13px) 50%;background-size:6px 6px,6px 6px;background-repeat:no-repeat;transition:border-color .15s,box-shadow .15s}select.sel:hover{border-color:var(--primary)}select.sel:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 25%,transparent)}select.sel option{background-color:var(--panel);color:var(--text)}.seghint{margin:6px 2px 0;font-size:12.5px;color:var(--muted)}
 .tw{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
 .tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
 .tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
@@ -554,28 +554,20 @@ async function tabMonitor() {
   const sb = $('#monSt'); if (sb) sb.onclick = async () => { sb.disabled = true; sb.textContent = p('Checking...', 'যাচাই হচ্ছে...'); await monCheckStorage(); if (live()) tabMonitor(); };
 }
 
-const pkOpt = (v, t, ic, on) => '<button type="button" class="' + (on ? 'on' : '') + '" data-pk="' + v + '" role="radio" aria-checked="' + on + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg>' + esc(t) + '</button>';
 function tabPdf() {
   const d0 = (mdate && mdate.slice(0, 7) === month) ? mdate : month + '-01';
-  app.innerHTML = head(tt('pdf')) + '<div class="card"><h3 style="margin-top:0">' + p('Download PDF', 'PDF ডাউনলোড') + '</h3><div class="fg" style="margin:0 0 12px"><label>' + p('Report type', 'রিপোর্টের ধরন') + '</label><div class="seg" role="radiogroup">'
-    + pkOpt('month', p('Month', 'মাস'), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>', true)
-    + pkOpt('day', p('Day', 'দিন'), '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/>', false)
-    + pkOpt('member', p('Member', 'সদস্য'), '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', false)
-    + '</div><p class="seghint" id="pkh">' + p('Full month: ', 'পুরো মাস: ') + monthLabel(month) + '</p><input type="hidden" id="pk" value="month"></div>'
-    + '<div class="fg" style="margin:0 0 12px;display:none" id="pmw"><label>' + p('Member', 'সদস্য') + '</label><div class="chips">' + actives().map(m => '<button type="button" class="chip' + (user && m.id === user.uid ? ' on' : '') + '" data-pm="' + m.id + '">' + esc(m.name) + '</button>').join('') + '</div><input type="hidden" id="pm" value="' + ((actives().find(m => user && m.id === user.uid) || actives()[0] || {}).id || '') + '"></div>'
+  app.innerHTML = head(tt('pdf')) + '<div class="card"><h3 style="margin-top:0">' + p('Download PDF', 'PDF ডাউনলোড') + '</h3><div class="fg" style="margin:0 0 12px"><label for="pk">' + p('Report type', 'রিপোর্টের ধরন') + '</label><select id="pk" class="sel">'
+    + '<option value="month">' + p('Month wise', 'মাসভিত্তিক') + '</option><option value="day">' + p('Day wise', 'দিনভিত্তিক') + '</option><option value="member">' + p('Member wise', 'সদস্যভিত্তিক') + '</option></select>'
+    + '<p class="seghint" id="pkh">' + p('Full month: ', 'পুরো মাস: ') + monthLabel(month) + '</p></div>'
+    + '<div class="fg" style="margin:0 0 12px;display:none" id="pmw"><label for="pm">' + p('Member', 'সদস্য') + '</label><select id="pm" class="sel">' + actives().map(m => '<option value="' + m.id + '"' + (user && m.id === user.uid ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') + '</select></div>'
     + '<div class="fg" style="margin:0 0 12px;display:none;max-width:260px" id="pdw"><label>' + p('Date', 'তারিখ') + '</label><input type="date" id="pd" value="' + d0 + '" ' + dateAttr() + '></div>'
     + '<button class="btn btn-primary" data-a="pdf">' + p('Download PDF', 'PDF ডাউনলোড') + '</button></div>'
     + '<div class="card"><h3 style="margin-top:0">' + p('Online reports (QR links)', 'অনলাইন রিপোর্ট (QR লিংক)') + '</h3><p class="muted">' + p('Every PDF you download is also saved online. Open or copy its link here.', 'প্রতিটি PDF ডাউনলোডের সাথে রিপোর্টটি অনলাইনেও সেভ হয়। এখান থেকে লিংক খুলুন বা কপি করুন।') + '</p><div id="rl"><p class="muted">' + p('Loading...', 'লোড হচ্ছে...') + '</p></div></div>';
-  app.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => {
-    const v = b.dataset.pk; $('#pk').value = v;
-    app.querySelectorAll('[data-pk]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on ? 'true' : 'false'); });
+  $('#pk').onchange = () => {
+    const v = $('#pk').value;
     $('#pdw').style.display = v === 'day' ? '' : 'none'; $('#pmw').style.display = v === 'member' ? '' : 'none';
     $('#pkh').textContent = v === 'month' ? p('Full month: ', 'পুরো মাস: ') + monthLabel(month) : v === 'day' ? p('Pick one date', 'একটি তারিখ বেছে নিন') : p('One member only', 'একজন সদস্যের হিসাব');
-  });
-  app.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
-    $('#pm').value = b.dataset.pm;
-    app.querySelectorAll('[data-pm]').forEach(x => x.classList.toggle('on', x === b));
-  });
+  };
   loadReports();
 }
 async function loadReports() {
